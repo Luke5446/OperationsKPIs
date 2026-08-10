@@ -70,16 +70,34 @@ td.num{font-family:'IBM Plex Mono',monospace;font-size:12.5px}
 footer{max-width:1180px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace}
 .err{background:#FBEDEB;border:1px solid var(--bad);color:var(--bad);padding:12px 16px;border-radius:8px;margin-bottom:18px;font-size:14px;display:none}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+#gate{position:fixed;inset:0;background:var(--ink);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px}
+.gate-card{width:100%;max-width:380px;color:var(--chalk);border:1px solid #3D4D63;border-radius:10px;padding:30px 28px;display:flex;flex-direction:column}
+.gate-card h1{font-size:24px}
+#gateInput{font-family:'IBM Plex Mono',monospace;font-size:16px;background:transparent;color:var(--chalk);border:1px solid #4A5B72;border-radius:6px;padding:11px 12px;margin:6px 0 12px}
+#gateInput:focus-visible{outline:2px solid #fff;outline-offset:1px}
+#gateBtn{font-family:'Archivo',sans-serif;font-weight:700;font-size:15px;letter-spacing:.02em;background:var(--chalk);color:var(--ink);border:none;border-radius:6px;padding:12px;cursor:pointer}
+#gateBtn:disabled{opacity:.6;cursor:wait}
+#gateMsg{font-size:12px;color:#E8A79E;margin-top:12px;min-height:16px}
 </style>
 </head>
 <body>
+<div id="gate">
+  <div class="gate-card">
+    <span class="eyebrow" style="color:#9FB0C6">Board KPI Report · Restricted</span>
+    <h1 style="margin:6px 0 18px">Tibard &amp; Oliver Harvey</h1>
+    <label class="eyebrow" for="gateInput" style="color:#9FB0C6">Password</label>
+    <input id="gateInput" type="password" autocomplete="current-password" />
+    <button id="gateBtn">Unlock</button>
+    <div id="gateMsg" class="mono"></div>
+  </div>
+</div>
 <header>
   <div class="brandline">
     <span class="eyebrow">Board KPI Report · Operations</span>
     <h1>Tibard &amp; Oliver Harvey</h1>
   </div>
   <div class="controls">
-    <span class="src-badge" id="srcBadge">local data</span>
+    <span class="src-badge" id="srcBadge">locked</span>
     <label class="eyebrow" for="monthSel" style="margin-right:2px">Month</label>
     <select id="monthSel" aria-label="Select reporting month"></select>
   </div>
@@ -106,307 +124,26 @@ footer{max-width:1180px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:v
 <footer>Data: Google Sheet KPI table · Historic figures migrated from the board KPI workbook · Built for Tibard Ltd</footer>
 
 <script>
-/* ================= CONFIG =================
-   Paste your published Google Sheet CSV URL here.
-   File → Share → Publish to web → (Data tab) → CSV → copy link.
-   While empty, the dashboard uses the embedded historic data below. */
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRblAeBhgjna6ZVEv9Yvcd2uMPYDemdg2m6cjswgwYsVVj67jsubt87qSPyX9FzjcveSLKhkavlDCpm/pub?gid=1434668853&single=true&output=csv";
-
-/* Embedded fallback: migrated history to June 2026 */
-const EMBEDDED_CSV = `Date,Brand,Area,Metric,Value
-2025-01,Group,Production,Off-Shore Production £,205168.0
-2025-01,Group,Warehouse,DPD Cartons,4886.0
-2025-01,Group,Warehouse,DPD Consignments,4021.0
-2025-01,Oliver Harvey,Production,On-Shore Production Qty,7874.0
-2025-01,Oliver Harvey,Production,On-Shore Production £,71808.0
-2025-01,Oliver Harvey,Stock,Stock Valuation £,279112.0
-2025-01,Oliver Harvey,Warehouse,Late Orders,13.0
-2025-01,Oliver Harvey,Warehouse,OTIF %,0.9779
-2025-01,Oliver Harvey,Warehouse,Orders Despatched,587.0
-2025-01,Tibard,Production,Off-Shore Production Qty,61558.0
-2025-01,Tibard,Production,On-Shore Production Qty,3878.0
-2025-01,Tibard,Production,On-Shore Production £,21595.0
-2025-01,Tibard,Stock,Stock Valuation £,1214974.0
-2025-01,Tibard,Warehouse,Late Orders,91.0
-2025-01,Tibard,Warehouse,OTIF %,0.9684
-2025-01,Tibard,Warehouse,Orders Despatched,2880.0
-2025-02,Group,Warehouse,DPD Cartons,4826.0
-2025-02,Group,Warehouse,DPD Consignments,4117.0
-2025-02,Oliver Harvey,Production,On-Shore Production Qty,7560.0
-2025-02,Oliver Harvey,Production,On-Shore Production £,67051.0
-2025-02,Oliver Harvey,Stock,Stock Valuation £,255161.0
-2025-02,Oliver Harvey,Warehouse,Late Orders,9.0
-2025-02,Oliver Harvey,Warehouse,OTIF %,0.9897
-2025-02,Oliver Harvey,Warehouse,Orders Despatched,871.0
-2025-02,Tibard,Production,On-Shore Production Qty,3183.0
-2025-02,Tibard,Production,On-Shore Production £,17832.0
-2025-02,Tibard,Stock,Stock Valuation £,1136665.0
-2025-02,Tibard,Warehouse,Late Orders,183.0
-2025-02,Tibard,Warehouse,OTIF %,0.9451
-2025-02,Tibard,Warehouse,Orders Despatched,3336.0
-2025-03,Group,Warehouse,DPD Cartons,4698.0
-2025-03,Group,Warehouse,DPD Consignments,4046.0
-2025-03,Oliver Harvey,Production,On-Shore Production Qty,9438.0
-2025-03,Oliver Harvey,Production,On-Shore Production £,77545.0
-2025-03,Oliver Harvey,Stock,Stock Valuation £,228145.0
-2025-03,Oliver Harvey,Warehouse,Late Orders,31.0
-2025-03,Oliver Harvey,Warehouse,OTIF %,0.9681
-2025-03,Oliver Harvey,Warehouse,Orders Despatched,971.0
-2025-03,Tibard,Production,On-Shore Production Qty,3882.0
-2025-03,Tibard,Production,On-Shore Production £,23924.0
-2025-03,Tibard,Stock,Stock Valuation £,1030335.0
-2025-03,Tibard,Warehouse,Late Orders,232.0
-2025-03,Tibard,Warehouse,OTIF %,0.9328
-2025-03,Tibard,Warehouse,Orders Despatched,3452.0
-2025-04,Group,Production,Off-Shore Production £,305928.7
-2025-04,Group,Warehouse,DPD Cartons,5068.0
-2025-04,Group,Warehouse,DPD Consignments,4379.0
-2025-04,Oliver Harvey,Production,Off-Shore Production Qty,6720.0
-2025-04,Oliver Harvey,Production,On-Shore Production Qty,8161.0
-2025-04,Oliver Harvey,Production,On-Shore Production £,71172.0
-2025-04,Oliver Harvey,Stock,Stock Valuation £,224172.0
-2025-04,Oliver Harvey,Warehouse,Late Orders,20.0
-2025-04,Oliver Harvey,Warehouse,OTIF %,0.9786
-2025-04,Oliver Harvey,Warehouse,Orders Despatched,936.0
-2025-04,Tibard,Production,Off-Shore Production Qty,71999.0
-2025-04,Tibard,Production,On-Shore Production Qty,2922.0
-2025-04,Tibard,Production,On-Shore Production £,18853.0
-2025-04,Tibard,Stock,Stock Valuation £,1120028.0
-2025-04,Tibard,Warehouse,Late Orders,255.0
-2025-04,Tibard,Warehouse,OTIF %,0.9165
-2025-04,Tibard,Warehouse,Orders Despatched,3053.0
-2025-05,Group,Production,Off-Shore Production £,273832.0
-2025-05,Group,Warehouse,DPD Cartons,4058.0
-2025-05,Group,Warehouse,DPD Consignments,3445.0
-2025-05,Oliver Harvey,Production,Off-Shore Production Qty,10200.0
-2025-05,Oliver Harvey,Production,On-Shore Production Qty,7776.0
-2025-05,Oliver Harvey,Production,On-Shore Production £,64956.0
-2025-05,Oliver Harvey,Stock,Stock Valuation £,194347.0
-2025-05,Oliver Harvey,Warehouse,Late Orders,26.0
-2025-05,Oliver Harvey,Warehouse,OTIF %,0.9723
-2025-05,Oliver Harvey,Warehouse,Orders Despatched,940.0
-2025-05,Tibard,Production,Off-Shore Production Qty,64159.0
-2025-05,Tibard,Production,On-Shore Production Qty,3961.0
-2025-05,Tibard,Production,On-Shore Production £,21284.0
-2025-05,Tibard,Stock,Stock Valuation £,1209728.0
-2025-05,Tibard,Warehouse,Late Orders,317.0
-2025-05,Tibard,Warehouse,OTIF %,0.8979
-2025-05,Tibard,Warehouse,Orders Despatched,3104.0
-2025-06,Group,Warehouse,DPD Cartons,4732.0
-2025-06,Group,Warehouse,DPD Consignments,4028.0
-2025-06,Oliver Harvey,Production,On-Shore Production Qty,12283.0
-2025-06,Oliver Harvey,Production,On-Shore Production £,107802.0
-2025-06,Oliver Harvey,Stock,Stock Valuation £,223089.0
-2025-06,Oliver Harvey,Warehouse,Late Orders,20.0
-2025-06,Oliver Harvey,Warehouse,OTIF %,0.9782
-2025-06,Oliver Harvey,Warehouse,Orders Despatched,918.0
-2025-06,Tibard,Production,On-Shore Production Qty,2769.0
-2025-06,Tibard,Production,On-Shore Production £,12544.0
-2025-06,Tibard,Stock,Stock Valuation £,1073789.0
-2025-06,Tibard,Warehouse,Late Orders,443.0
-2025-06,Tibard,Warehouse,OTIF %,0.8723
-2025-06,Tibard,Warehouse,Orders Despatched,3469.0
-2025-07,Group,Production,Off-Shore Production £,153391.0
-2025-07,Group,Warehouse,DPD Cartons,4844.0
-2025-07,Group,Warehouse,DPD Consignments,4193.0
-2025-07,Oliver Harvey,Production,Off-Shore Production Qty,8325.0
-2025-07,Oliver Harvey,Production,On-Shore Production Qty,13025.0
-2025-07,Oliver Harvey,Production,On-Shore Production £,126639.0
-2025-07,Oliver Harvey,Stock,Stock Valuation £,245244.0
-2025-07,Oliver Harvey,Warehouse,Late Orders,28.0
-2025-07,Oliver Harvey,Warehouse,OTIF %,0.9711
-2025-07,Oliver Harvey,Warehouse,Orders Despatched,968.0
-2025-07,Tibard,Production,Off-Shore Production Qty,27138.0
-2025-07,Tibard,Production,On-Shore Production Qty,2508.0
-2025-07,Tibard,Production,On-Shore Production £,13761.0
-2025-07,Tibard,Stock,Stock Valuation £,1032385.0
-2025-07,Tibard,Warehouse,Late Orders,390.0
-2025-07,Tibard,Warehouse,OTIF %,0.8774
-2025-07,Tibard,Warehouse,Orders Despatched,3181.0
-2025-08,Group,Production,Off-Shore Production £,66469.0
-2025-08,Group,Warehouse,DPD Cartons,4017.0
-2025-08,Group,Warehouse,DPD Consignments,3518.0
-2025-08,Oliver Harvey,Production,Off-Shore Production Qty,480.0
-2025-08,Oliver Harvey,Production,On-Shore Production Qty,9243.0
-2025-08,Oliver Harvey,Production,On-Shore Production £,73880.0
-2025-08,Oliver Harvey,Stock,Stock Valuation £,238256.0
-2025-08,Oliver Harvey,Warehouse,Late Orders,30.0
-2025-08,Oliver Harvey,Warehouse,OTIF %,0.9616
-2025-08,Oliver Harvey,Warehouse,Orders Despatched,782.0
-2025-08,Tibard,Production,Off-Shore Production Qty,16045.0
-2025-08,Tibard,Production,On-Shore Production Qty,1897.0
-2025-08,Tibard,Production,On-Shore Production £,8215.0
-2025-08,Tibard,Stock,Stock Valuation £,978060.0
-2025-08,Tibard,Warehouse,Late Orders,407.0
-2025-08,Tibard,Warehouse,OTIF %,0.8656
-2025-08,Tibard,Warehouse,Orders Despatched,3029.0
-2025-09,Group,Production,Off-Shore Production £,161143.0
-2025-09,Group,Warehouse,DPD Cartons,3891.0
-2025-09,Group,Warehouse,DPD Consignments,3437.0
-2025-09,Oliver Harvey,Production,Off-Shore Production Qty,9700.0
-2025-09,Oliver Harvey,Production,On-Shore Production Qty,9640.0
-2025-09,Oliver Harvey,Production,On-Shore Production £,88943.0
-2025-09,Oliver Harvey,Stock,Stock Valuation £,262137.0
-2025-09,Oliver Harvey,Warehouse,Late Orders,38.0
-2025-09,Oliver Harvey,Warehouse,OTIF %,0.9632
-2025-09,Oliver Harvey,Warehouse,Orders Despatched,1032.0
-2025-09,Tibard,Production,Off-Shore Production Qty,27703.0
-2025-09,Tibard,Production,On-Shore Production Qty,2883.0
-2025-09,Tibard,Production,On-Shore Production £,12532.0
-2025-09,Tibard,Stock,Stock Valuation £,979254.0
-2025-09,Tibard,Warehouse,Late Orders,517.0
-2025-09,Tibard,Warehouse,OTIF %,0.8242
-2025-09,Tibard,Warehouse,Orders Despatched,2941.0
-2025-10,Group,Production,Off-Shore Production £,124660.0
-2025-10,Group,Warehouse,DPD Cartons,5108.0
-2025-10,Group,Warehouse,DPD Consignments,4553.0
-2025-10,Oliver Harvey,Production,Off-Shore Production Qty,1130.0
-2025-10,Oliver Harvey,Production,On-Shore Production Qty,12983.0
-2025-10,Oliver Harvey,Production,On-Shore Production £,115330.0
-2025-10,Oliver Harvey,Stock,Stock Valuation £,310053.0
-2025-10,Oliver Harvey,Warehouse,Late Orders,33.0
-2025-10,Oliver Harvey,Warehouse,OTIF %,0.9672
-2025-10,Oliver Harvey,Warehouse,Orders Despatched,1005.0
-2025-10,Tibard,Production,Off-Shore Production Qty,32498.0
-2025-10,Tibard,Production,On-Shore Production Qty,2564.0
-2025-10,Tibard,Production,On-Shore Production £,12309.74
-2025-10,Tibard,Stock,Stock Valuation £,915638.0
-2025-10,Tibard,Warehouse,Late Orders,870.0
-2025-10,Tibard,Warehouse,OTIF %,0.7479
-2025-10,Tibard,Warehouse,Orders Despatched,3451.0
-2025-11,Group,Warehouse,DPD Cartons,3667.0
-2025-11,Group,Warehouse,DPD Consignments,3238.0
-2025-11,Oliver Harvey,Production,On-Shore Production Qty,5687.0
-2025-11,Oliver Harvey,Production,On-Shore Production £,56816.0
-2025-11,Oliver Harvey,Stock,Stock Valuation £,293056.0
-2025-11,Oliver Harvey,Warehouse,Late Orders,43.0
-2025-11,Oliver Harvey,Warehouse,OTIF %,0.9468
-2025-11,Oliver Harvey,Warehouse,Orders Despatched,809.0
-2025-11,Tibard,Production,On-Shore Production Qty,2784.0
-2025-11,Tibard,Production,On-Shore Production £,12603.0
-2025-11,Tibard,Stock,Stock Valuation £,803477.0
-2025-11,Tibard,Warehouse,Late Orders,667.0
-2025-11,Tibard,Warehouse,OTIF %,0.7383
-2025-11,Tibard,Warehouse,Orders Despatched,2549.0
-2025-12,Group,Production,Off-Shore Production £,128523.0
-2025-12,Group,Warehouse,DPD Cartons,3138.0
-2025-12,Group,Warehouse,DPD Consignments,2832.0
-2025-12,Oliver Harvey,Production,Off-Shore Production Qty,1389.0
-2025-12,Oliver Harvey,Production,Off-Shore Production £,8895.0
-2025-12,Oliver Harvey,Production,On-Shore Production Qty,6518.0
-2025-12,Oliver Harvey,Production,On-Shore Production £,56142.0
-2025-12,Oliver Harvey,Stock,Stock Valuation £,264445.0
-2025-12,Oliver Harvey,Warehouse,Late Orders,105.0
-2025-12,Oliver Harvey,Warehouse,OTIF %,0.8847
-2025-12,Oliver Harvey,Warehouse,Orders Despatched,911.0
-2025-12,Tibard,Production,Off-Shore Production Qty,36317.0
-2025-12,Tibard,Production,Off-Shore Production £,119628.0
-2025-12,Tibard,Production,On-Shore Production Qty,4369.0
-2025-12,Tibard,Production,On-Shore Production £,16176.0
-2025-12,Tibard,Stock,Stock Valuation £,810362.0
-2025-12,Tibard,Warehouse,Late Orders,641.0
-2025-12,Tibard,Warehouse,OTIF %,0.7006
-2025-12,Tibard,Warehouse,Orders Despatched,2141.0
-2026-01,Group,Warehouse,DPD Cartons,3150.0
-2026-01,Group,Warehouse,DPD Consignments,2904.0
-2026-01,Oliver Harvey,Production,Off-Shore Production Qty,2800.0
-2026-01,Oliver Harvey,Production,Off-Shore Production £,15400.0
-2026-01,Oliver Harvey,Production,On-Shore Production Qty,9160.0
-2026-01,Oliver Harvey,Production,On-Shore Production £,81469.0
-2026-01,Oliver Harvey,Stock,Stock Valuation £,290928.0
-2026-01,Oliver Harvey,Warehouse,Late Orders,43.0
-2026-01,Oliver Harvey,Warehouse,OTIF %,0.9522
-2026-01,Oliver Harvey,Warehouse,Orders Despatched,900.0
-2026-01,Tibard,Production,Off-Shore Production Qty,16369.0
-2026-01,Tibard,Production,Off-Shore Production £,60663.0
-2026-01,Tibard,Production,On-Shore Production Qty,4126.0
-2026-01,Tibard,Production,On-Shore Production £,18556.24
-2026-01,Tibard,Stock,Stock Valuation £,705852.0
-2026-01,Tibard,Warehouse,Late Orders,204.0
-2026-01,Tibard,Warehouse,OTIF %,0.903
-2026-01,Tibard,Warehouse,Orders Despatched,2103.0
-2026-02,Group,Warehouse,DPD Cartons,3327.0
-2026-02,Group,Warehouse,DPD Consignments,3120.0
-2026-02,Oliver Harvey,Production,On-Shore Production Qty,11134.0
-2026-02,Oliver Harvey,Production,On-Shore Production £,96894.0
-2026-02,Oliver Harvey,Stock,Stock Valuation £,316941.0
-2026-02,Oliver Harvey,Warehouse,Late Orders,17.0
-2026-02,Oliver Harvey,Warehouse,OTIF %,0.9808
-2026-02,Oliver Harvey,Warehouse,Orders Despatched,885.0
-2026-02,Tibard,Production,On-Shore Production Qty,1879.0
-2026-02,Tibard,Production,On-Shore Production £,9475.0
-2026-02,Tibard,Stock,Stock Valuation £,631647.0
-2026-02,Tibard,Warehouse,Late Orders,112.0
-2026-02,Tibard,Warehouse,OTIF %,0.9509
-2026-02,Tibard,Warehouse,Orders Despatched,2280.0
-2026-03,Group,Warehouse,DPD Cartons,4212.0
-2026-03,Group,Warehouse,DPD Consignments,3974.0
-2026-03,Oliver Harvey,Production,On-Shore Production Qty,3121.0
-2026-03,Oliver Harvey,Production,On-Shore Production £,30795.0
-2026-03,Oliver Harvey,Stock,Stock Valuation £,238015.0
-2026-03,Oliver Harvey,Warehouse,Late Orders,17.0
-2026-03,Oliver Harvey,Warehouse,OTIF %,0.9832
-2026-03,Oliver Harvey,Warehouse,Orders Despatched,1014.0
-2026-03,Tibard,Production,On-Shore Production Qty,4816.0
-2026-03,Tibard,Production,On-Shore Production £,34843.0
-2026-03,Tibard,Stock,Stock Valuation £,565367.0
-2026-03,Tibard,Warehouse,Late Orders,160.0
-2026-03,Tibard,Warehouse,OTIF %,0.9388
-2026-03,Tibard,Warehouse,Orders Despatched,2614.0
-2026-04,Group,Warehouse,DPD Cartons,3409.0
-2026-04,Group,Warehouse,DPD Consignments,3177.0
-2026-04,Oliver Harvey,Production,Off-Shore Production Qty,2120.0
-2026-04,Oliver Harvey,Production,Off-Shore Production £,10950.0
-2026-04,Oliver Harvey,Production,On-Shore Production Qty,7753.0
-2026-04,Oliver Harvey,Production,On-Shore Production £,76797.0
-2026-04,Oliver Harvey,Stock,Stock Valuation £,204551.0
-2026-04,Oliver Harvey,Warehouse,Late Orders,30.0
-2026-04,Oliver Harvey,Warehouse,OTIF %,0.9682
-2026-04,Oliver Harvey,Warehouse,Orders Despatched,943.0
-2026-04,Tibard,Production,Off-Shore Production Qty,86613.0
-2026-04,Tibard,Production,Off-Shore Production £,129144.0
-2026-04,Tibard,Production,On-Shore Production Qty,1488.0
-2026-04,Tibard,Production,On-Shore Production £,6718.0
-2026-04,Tibard,Stock,Stock Valuation £,700936.0
-2026-04,Tibard,Warehouse,Late Orders,295.0
-2026-04,Tibard,Warehouse,OTIF %,0.8778
-2026-04,Tibard,Warehouse,Orders Despatched,2415.0
-2026-05,Group,Warehouse,DPD Cartons,3163.0
-2026-05,Group,Warehouse,DPD Consignments,3365.0
-2026-05,Oliver Harvey,Production,Off-Shore Production Qty,3620.0
-2026-05,Oliver Harvey,Production,Off-Shore Production £,18181.0
-2026-05,Oliver Harvey,Production,On-Shore Production Qty,9638.0
-2026-05,Oliver Harvey,Production,On-Shore Production £,88941.0
-2026-05,Oliver Harvey,Stock,Stock Valuation £,207110.0
-2026-05,Oliver Harvey,Warehouse,Late Orders,24.0
-2026-05,Oliver Harvey,Warehouse,OTIF %,0.9752
-2026-05,Oliver Harvey,Warehouse,Orders Despatched,969.0
-2026-05,Tibard,Production,Off-Shore Production Qty,6290.0
-2026-05,Tibard,Production,Off-Shore Production £,21572.0
-2026-05,Tibard,Production,On-Shore Production Qty,2374.0
-2026-05,Tibard,Production,On-Shore Production £,11928.0
-2026-05,Tibard,Stock,Stock Valuation £,651826.0
-2026-05,Tibard,Warehouse,Late Orders,170.0
-2026-05,Tibard,Warehouse,OTIF %,0.93
-2026-05,Tibard,Warehouse,Orders Despatched,2430.0
-2026-06,Group,Warehouse,DPD Cartons,4057.0
-2026-06,Group,Warehouse,DPD Consignments,3757.0
-2026-06,Oliver Harvey,Production,Off-Shore Production Qty,5860.0
-2026-06,Oliver Harvey,Production,Off-Shore Production £,31577.0
-2026-06,Oliver Harvey,Production,On-Shore Production Qty,8068.0
-2026-06,Oliver Harvey,Production,On-Shore Production £,82720.0
-2026-06,Oliver Harvey,Stock,Stock Valuation £,198355.0
-2026-06,Oliver Harvey,Warehouse,Late Orders,30.0
-2026-06,Oliver Harvey,Warehouse,OTIF %,0.972
-2026-06,Oliver Harvey,Warehouse,Orders Despatched,1073.0
-2026-06,Tibard,Production,Off-Shore Production Qty,27046.0
-2026-06,Tibard,Production,Off-Shore Production £,85565.0
-2026-06,Tibard,Production,On-Shore Production Qty,3335.0
-2026-06,Tibard,Production,On-Shore Production £,13961.0
-2026-06,Tibard,Stock,Stock Valuation £,644562.0
-2026-06,Tibard,Warehouse,Late Orders,125.0
-2026-06,Tibard,Warehouse,OTIF %,0.9452
-2026-06,Tibard,Warehouse,Orders Despatched,2280.0`;
+/* ============ ENCRYPTED CONFIG ============
+   The Google Sheet URL is AES-GCM encrypted with a password-derived
+   key (PBKDF2-SHA256, 310000 iterations). No data or URL is readable
+   in this file without the password. */
+const ENC = {
+  salt: "ZIoSrKnBitAbj4tb5Q1n2w==",
+  iv: "658ZaTbpa4lK2/2V",
+  ct: "JKqEg+Na/A16iEIvCao59RC5uPZzM/KzPEYkI9rE4XL6EkGCSLArpeyhZP3ZalCAAeswq4EzBwk6aI5hMb9LiBcSQn88NroYwiQXmZWoT7CArHuPPnalEhymw/zDwF/cou+u5K9RDUVNYPDgsZoNVpn2cUFexEV36P+3YYbjkW3U/+/LjE21SS060cOCoKGhvVAX1peypyLCuauPGKesKOuk9zGrWCPNdU8ItCmGtFRWN5qjM3NLg78=",
+  iter: 310000
+};
+const fromB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function decryptURL(pw) {
+  const enc = new TextEncoder();
+  const km = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt: fromB64(ENC.salt), iterations: ENC.iter, hash:'SHA-256'},
+    km, {name:'AES-GCM', length:256}, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv: fromB64(ENC.iv)}, key, fromB64(ENC.ct));
+  return new TextDecoder().decode(pt);
+}
 
 /* ================ helpers ================ */
 const MONTH_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -610,30 +347,47 @@ function render(){
   renderCards(d);renderCharts(d);renderDetail(d);
 }
 
-async function init(){
-  let csv=EMBEDDED_CSV, src='embedded data (to Jun 26)';
-  if(SHEET_CSV_URL){
-    try{
-      const res=await fetch(SHEET_CSV_URL,{cache:'no-store'});
-      if(!res.ok)throw new Error('HTTP '+res.status);
-      csv=await res.text();src='live · Google Sheet';
-    }catch(e){
-      const box=document.getElementById('errBox');
-      box.style.display='block';
-      box.textContent='Could not load the Google Sheet ('+e.message+'). Showing embedded data instead — check the sheet is published to the web as CSV.';
-      src='embedded (sheet unreachable)';
-    }
-  }
-  document.getElementById('srcBadge').textContent=src;
+async function loadDashboard(url){
+  const res=await fetch(url,{cache:'no-store'});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const csv=await res.text();
   DATA=parseCSV(csv);
+  if(!DATA.length)throw new Error('empty sheet');
   MONTHS=[...new Set(DATA.map(r=>r.Date))].sort();
   const sel=document.getElementById('monthSel');
   sel.innerHTML=MONTHS.map(m=>`<option value="${m}">${fmtMonth(m)}</option>`).join('');
   sel.value=MONTHS[MONTHS.length-1];
   sel.addEventListener('change',render);
+  document.getElementById('srcBadge').textContent='live · Google Sheet';
   render();
 }
-init();
+
+const gate=document.getElementById('gate'),
+      gateInput=document.getElementById('gateInput'),
+      gateBtn=document.getElementById('gateBtn'),
+      gateMsg=document.getElementById('gateMsg');
+async function tryUnlock(){
+  const pw=gateInput.value;
+  if(!pw)return;
+  gateBtn.disabled=true;gateMsg.textContent='Unlocking…';
+  let url;
+  try{ url=await decryptURL(pw); }
+  catch(e){
+    gateMsg.textContent='Incorrect password.';
+    gateBtn.disabled=false;gateInput.select();
+    return;
+  }
+  try{ await loadDashboard(url); }
+  catch(e){
+    gateMsg.textContent='Password OK, but the sheet could not be loaded ('+e.message+'). Check the sheet is published to the web.';
+    gateBtn.disabled=false;
+    return;
+  }
+  gate.style.display='none';
+}
+gateBtn.addEventListener('click',tryUnlock);
+gateInput.addEventListener('keydown',e=>{if(e.key==='Enter')tryUnlock();});
+gateInput.focus();
 </script>
 </body>
 </html>
