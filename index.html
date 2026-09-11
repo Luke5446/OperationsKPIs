@@ -6,119 +6,188 @@
 <title>Tibard &amp; Oliver Harvey — Operations KPIs</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#15202E;        /* deep navy — Tibard */
-  --ink-soft:#3D4D63;
-  --chalk:#F6F5F1;      /* chef-whites background */
+  /* Brand colours — matched to the NCR tracker (fabric swatch in the Tibard logo) */
+  --ink:#1F3864;         /* Tibard navy */
+  --chambray:#2E6DA4;    /* swatch blue */
+  --sky:#7FA9CE;         /* swatch light blue */
+  --brand-green:#2F7A44; /* swatch green */
+  --brand-red:#C1352C;   /* swatch red */
+  --amber:#D9822B;
+  --paper:#F4F6F9;       /* cool paper background */
   --card:#FFFFFF;
-  --tibard:#2E5E9E;     /* Tibard blue */
-  --oh:#A8842C;         /* Oliver Harvey brass */
-  --group:#6B7686;
-  --good:#2E7D4F;
-  --bad:#B3392E;
-  --hairline:#E2DFD7;
-  --stitch:#C9C4B8;
+  --line:#DCE3EC;
+  --muted:#5C6B7F;
+  --tagbg:#EDF2F8;
+  --tibard:#2E6DA4;      /* Tibard series colour */
+  --tibard-2:#7FA9CE;
+  --oh:#B7892B;          /* Oliver Harvey brass */
+  --oh-2:#DCC48A;
+  --group:#8A94A3;
+  --good:#2F7A44;
+  --bad:#C1352C;
+  --shadow:0 6px 16px rgba(31,56,100,.08);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--chalk);color:var(--ink);font-family:'Archivo',sans-serif;font-variation-settings:'wdth' 92;line-height:1.45}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;line-height:1.45;-webkit-font-smoothing:antialiased}
 .mono{font-family:'IBM Plex Mono',monospace}
+:focus-visible{outline:3px solid var(--chambray);outline-offset:2px;border-radius:4px}
 
-header{background:var(--ink);color:var(--chalk);padding:26px 32px 22px;display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between}
-.brandline{display:flex;flex-direction:column;gap:4px}
-.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9FB0C6}
-h1{font-size:clamp(20px,3vw,30px);font-weight:750;letter-spacing:-.01em;font-variation-settings:'wdth' 82}
-.controls{display:flex;gap:10px;align-items:center}
-select{font-family:'IBM Plex Mono',monospace;font-size:14px;background:transparent;color:var(--chalk);border:1px solid #4A5B72;border-radius:4px;padding:8px 12px;cursor:pointer}
-select:focus-visible{outline:2px solid #fff;outline-offset:2px}
-select option{color:var(--ink)}
-.src-badge{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;padding:6px 10px;border-radius:999px;border:1px dashed #4A5B72;color:#9FB0C6}
+/* ---------- header ---------- */
+header{background:var(--card);color:var(--ink);padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.brand img{height:38px;width:auto;display:block}
+.wordmark{font-family:'Archivo',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:.14em;text-transform:uppercase}
+.brand .sub{font-family:'Archivo',sans-serif;font-weight:700;font-size:.82rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);border-left:1px solid var(--line);padding-left:14px}
+.head-meta{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:.8rem;color:var(--muted);flex-wrap:wrap}
+.src-badge{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--tagbg);border:1px solid var(--line);color:var(--muted)}
+.src-badge.live{background:#E8F1EA;color:var(--brand-green);border-color:#C0D8C6}
+.src-badge.live::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-green);margin-right:6px;vertical-align:1px}
+.month-ctl{display:flex;align-items:center;gap:8px}
+.month-ctl label{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+select{font:inherit;font-weight:600;font-size:.88rem;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 32px 7px 12px;cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%231F3864' stroke-width='1.8'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center}
+select:hover{border-color:var(--chambray);background-color:var(--tagbg)}
 
-main{max-width:1180px;margin:0 auto;padding:28px 24px 60px}
+/* brand stripe — the colours of the swatch in the logo */
+.seam{height:4px;margin:0;background:linear-gradient(to right,
+  var(--brand-green) 0 25%, var(--brand-red) 25% 50%, var(--ink) 50% 75%, var(--sky) 75% 100%)}
 
-/* stitched section rule — the garment-label motif */
-.section-label{display:flex;align-items:center;gap:14px;margin:34px 0 16px}
-.section-label span{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft);white-space:nowrap}
-.section-label::after{content:'';flex:1;border-top:2px dashed var(--stitch)}
+main{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
 
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
-.card{background:var(--card);border:1px solid var(--hairline);border-radius:8px;padding:16px 18px 14px;position:relative}
-.card .k-label{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
-.card .k-value{font-size:clamp(26px,2.6vw,34px);font-weight:760;letter-spacing:-.02em;margin:6px 0 2px;font-variation-settings:'wdth' 85}
-.card .k-sub{font-size:12.5px;color:var(--ink-soft)}
-.delta{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;margin-right:10px}
-.delta.up{color:var(--good)} .delta.down{color:var(--bad)} .delta.flat{color:var(--group)}
-.card .split{display:flex;gap:14px;margin-top:8px;padding-top:8px;border-top:2px dashed var(--stitch);font-size:12.5px}
-.split b{font-weight:700}
-.dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:baseline}
+/* ---------- section titles ---------- */
+.section-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:28px 0 12px}
+.section-title h2{font-family:'Archivo',sans-serif;font-weight:700;font-size:.85rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink)}
+.section-title .hint{font-size:.78rem;color:var(--muted)}
+.section-title:first-of-type{margin-top:4px}
+
+/* ---------- KPI tiles ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--chambray);border-radius:10px;padding:14px 16px 12px;display:flex;flex-direction:column;gap:8px;transition:transform .12s ease,box-shadow .12s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.card.warn{border-top-color:var(--brand-red)}
+.card .k-label{font-size:.74rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.card .k-value{font-family:'Archivo',sans-serif;font-weight:800;font-size:2.1rem;line-height:1.05;letter-spacing:-.01em}
+.card.warn .k-value{color:var(--brand-red)}
+.deltas{display:flex;flex-wrap:wrap;gap:6px}
+.delta{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;background:var(--tagbg);color:var(--muted);border:1px solid var(--line)}
+.delta .arr{font-size:.7em}
+.delta.up{background:#E8F1EA;color:var(--good);border-color:#C0D8C6}
+.delta.down{background:#FBEAE8;color:var(--bad);border-color:#E9BDB8}
+.card .split{display:flex;gap:14px;flex-wrap:wrap;margin-top:auto;padding-top:9px;border-top:1px solid var(--line);font-size:.8rem;color:var(--muted)}
+.split b{font-weight:700;color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:.78rem}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 .dot.tib{background:var(--tibard)} .dot.oh{background:var(--oh)}
 
-.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}
+/* ---------- chart panels ---------- */
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:12px}
 @media(max-width:520px){.charts{grid-template-columns:1fr}}
-.panel{background:var(--card);border:1px solid var(--hairline);border-radius:8px;padding:16px 18px}
-.panel h2{font-size:14px;font-weight:700;letter-spacing:.02em;margin-bottom:10px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px 12px}
+.panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.panel h3{font-family:'Archivo',sans-serif;font-size:.95rem;font-weight:700;color:var(--ink)}
+.panel .meta{font-size:.74rem;color:var(--muted);font-weight:600}
 .panel .chart-wrap{position:relative;height:280px}
+.panel.tall .chart-wrap{height:300px}
+.panel.wide{grid-column:1/-1}
+.panel.wide .chart-wrap{height:240px}
 
-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--hairline);border-radius:8px;overflow:hidden;font-size:13.5px}
-th,td{text-align:right;padding:9px 14px;border-bottom:1px solid var(--hairline)}
+/* ---------- detail table ---------- */
+.tablewrap{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.tablewrap > div{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.86rem;min-width:520px}
+th,td{text-align:right;padding:9px 14px;border-bottom:1px solid var(--line)}
 th:first-child,td:first-child{text-align:left}
-thead th{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);background:#FBFAF7}
+thead th{font-size:.72rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--tagbg);position:sticky;top:0}
+tbody tr:hover td{background:#F8FAFC}
 tbody tr:last-child td{border-bottom:none}
-td.num{font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+tbody tr.grp td{background:var(--tagbg);font-family:'Archivo',sans-serif;font-weight:700;font-size:.76rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);padding-top:7px;padding-bottom:7px}
+td.num{font-family:'IBM Plex Mono',monospace;font-size:.82rem;font-weight:500}
+td.cur{font-weight:600;color:var(--ink)}
 
-footer{max-width:1180px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace}
-.err{background:#FBEDEB;border:1px solid var(--bad);color:var(--bad);padding:12px 16px;border-radius:8px;margin-bottom:18px;font-size:14px;display:none}
+footer{max-width:1180px;margin:0 auto;padding:0 18px 40px;font-size:.78rem;color:var(--muted)}
+.err{background:#FBEAE8;border:1px solid #E9BDB8;color:var(--bad);padding:12px 16px;border-radius:8px;margin-bottom:18px;font-size:.9rem;display:none}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
-#gate{position:fixed;inset:0;background:var(--ink);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px}
-.gate-card{width:100%;max-width:380px;color:var(--chalk);border:1px solid #3D4D63;border-radius:10px;padding:30px 28px;display:flex;flex-direction:column}
-.gate-card h1{font-size:24px}
-#gateInput{font-family:'IBM Plex Mono',monospace;font-size:16px;background:transparent;color:var(--chalk);border:1px solid #4A5B72;border-radius:6px;padding:11px 12px;margin:6px 0 12px}
-#gateInput:focus-visible{outline:2px solid #fff;outline-offset:1px}
-#gateBtn{font-family:'Archivo',sans-serif;font-weight:700;font-size:15px;letter-spacing:.02em;background:var(--chalk);color:var(--ink);border:none;border-radius:6px;padding:12px;cursor:pointer}
+
+/* ---------- password gate ---------- */
+#gate{position:fixed;inset:0;background:var(--paper);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px}
+.gate-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--chambray);border-radius:12px;padding:28px 26px;display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(31,56,100,.12)}
+.gate-card img{height:40px;width:auto;align-self:flex-start;margin-bottom:18px}
+.gate-card .eyebrow{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.gate-card h1{font-family:'Archivo',sans-serif;font-size:1.35rem;font-weight:800;margin:4px 0 18px}
+#gateInput{font:inherit;font-size:1rem;background:#FBFCFD;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:11px 12px;margin:6px 0 12px}
+#gateBtn{font-family:'Archivo',sans-serif;font-weight:700;font-size:.95rem;background:var(--ink);color:#fff;border:none;border-radius:8px;padding:12px;cursor:pointer}
+#gateBtn:hover{background:var(--chambray)}
 #gateBtn:disabled{opacity:.6;cursor:wait}
-#gateMsg{font-size:12px;color:#E8A79E;margin-top:12px;min-height:16px}
+#gateMsg{font-size:.8rem;color:var(--bad);margin-top:12px;min-height:16px}
 </style>
 </head>
 <body>
 <div id="gate">
   <div class="gate-card">
-    <span class="eyebrow" style="color:#9FB0C6">Board KPI Report · Restricted</span>
-    <h1 style="margin:6px 0 18px">Tibard &amp; Oliver Harvey</h1>
-    <label class="eyebrow" for="gateInput" style="color:#9FB0C6">Password</label>
+    <img src="tibard-logo.jpg" alt="Tibard" onerror="this.outerHTML='&lt;span class=&quot;wordmark&quot;&gt;Tibard&lt;/span&gt;'">
+    <span class="eyebrow">Board KPI Report · Restricted</span>
+    <h1>Operations KPIs</h1>
+    <label class="eyebrow" for="gateInput">Password</label>
     <input id="gateInput" type="password" autocomplete="current-password" />
     <button id="gateBtn">Unlock</button>
-    <div id="gateMsg" class="mono"></div>
+    <div id="gateMsg"></div>
   </div>
 </div>
+
 <header>
-  <div class="brandline">
-    <span class="eyebrow">Board KPI Report · Operations</span>
-    <h1>Tibard &amp; Oliver Harvey</h1>
+  <div class="brand">
+    <img src="tibard-logo.jpg" alt="Tibard" onerror="this.outerHTML='&lt;span class=&quot;wordmark&quot;&gt;Tibard&lt;/span&gt;'">
+    <span class="sub">Operations KPIs</span>
   </div>
-  <div class="controls">
+  <div class="head-meta">
     <span class="src-badge" id="srcBadge">locked</span>
-    <label class="eyebrow" for="monthSel" style="margin-right:2px">Month</label>
-    <select id="monthSel" aria-label="Select reporting month"></select>
+    <div class="month-ctl">
+      <label for="monthSel">Month</label>
+      <select id="monthSel" aria-label="Select reporting month"></select>
+    </div>
   </div>
 </header>
+<div class="seam"></div>
 
 <main>
   <div class="err" id="errBox"></div>
 
-  <div class="section-label"><span>Headlines — <span id="hlMonth"></span></span></div>
+  <div class="section-title"><h2>Headlines</h2><span class="hint"><span id="hlMonth"></span> · Tibard &amp; Oliver Harvey</span></div>
   <div class="cards" id="cards"></div>
 
-  <div class="section-label"><span>Trends — trailing 13 months</span></div>
+  <div class="section-title"><h2>Production</h2><span class="hint">Trailing 13 months · £ value (bars) and garments (lines)</span></div>
   <div class="charts">
-    <div class="panel"><h2>On-time in full (OTIF)</h2><div class="chart-wrap"><canvas id="chOtif"></canvas></div></div>
-    <div class="panel"><h2>Production value — £ by brand &amp; source</h2><div class="chart-wrap"><canvas id="chProd"></canvas></div></div>
-    <div class="panel"><h2>Stock valuation — £</h2><div class="chart-wrap"><canvas id="chStock"></canvas></div></div>
-    <div class="panel"><h2>Warehouse despatch volumes</h2><div class="chart-wrap"><canvas id="chWh"></canvas></div></div>
+    <div class="panel tall">
+      <div class="panel-head"><h3>Off-shore production</h3><span class="meta">Tibard vs Oliver Harvey</span></div>
+      <div class="chart-wrap"><canvas id="chProdOff"></canvas></div>
+    </div>
+    <div class="panel tall">
+      <div class="panel-head"><h3>On-shore production</h3><span class="meta">Tibard vs Oliver Harvey</span></div>
+      <div class="chart-wrap"><canvas id="chProdOn"></canvas></div>
+    </div>
   </div>
 
-  <div class="section-label"><span>Month detail — <span id="dtMonth"></span></span></div>
-  <div style="overflow-x:auto"><table id="detail"></table></div>
+  <div class="section-title"><h2>Service &amp; stock</h2><span class="hint">Trailing 13 months</span></div>
+  <div class="charts">
+    <div class="panel">
+      <div class="panel-head"><h3>On-time in full (OTIF)</h3><span class="meta">Target 95%</span></div>
+      <div class="chart-wrap"><canvas id="chOtif"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Warehouse despatch volumes</h3><span class="meta">Orders &amp; DPD consignments</span></div>
+      <div class="chart-wrap"><canvas id="chWh"></canvas></div>
+    </div>
+    <div class="panel wide">
+      <div class="panel-head"><h3>Stock valuation</h3><span class="meta">£ by brand</span></div>
+      <div class="chart-wrap"><canvas id="chStock"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-title"><h2>Month detail</h2><span class="hint" id="dtMonth"></span></div>
+  <div class="tablewrap"><div><table id="detail"></table></div></div>
 </main>
 
 <footer>Data: Google Sheet KPI table · Historic figures migrated from the board KPI workbook · Built for Tibard Ltd</footer>
@@ -205,14 +274,14 @@ function prevMonth(d){const[y,m]=d.split('-').map(Number);return m===1?`${y-1}-1
 function yearAgo(d){const[y,m]=d.split('-');return `${+y-1}-${m}`;}
 
 function deltaHTML(cur,ref,label,{pctPoints=false,invert=false}={}){
-  if(cur===null||ref===null||ref===0&&!pctPoints)return `<span class="delta flat">— ${label}</span>`;
+  if(cur===null||ref===null||ref===0&&!pctPoints)return `<span class="delta flat"><span class="arr">–</span>${label}</span>`;
   let diff,txt;
   if(pctPoints){diff=(cur-ref)*100;txt=(diff>0?'+':'')+diff.toFixed(1)+'pp';}
   else{diff=(cur-ref)/Math.abs(ref)*100;txt=(diff>0?'+':'')+diff.toFixed(1)+'%';}
   let cls='flat';
   if(Math.abs(diff)>=0.05){const goodDir=invert?diff<0:diff>0;cls=goodDir?'up':'down';}
   const arrow=Math.abs(diff)<0.05?'→':(diff>0?'▲':'▼');
-  return `<span class="delta ${cls}">${arrow} ${txt} ${label}</span>`;
+  return `<span class="delta ${cls}"><span class="arr">${arrow}</span>${txt} ${label}</span>`;
 }
 
 /* ================ render ================ */
@@ -228,7 +297,7 @@ function renderCards(d){
     return (to*tp+oo*op)/(to+oo);
   };
   const tibP=get(d,'Tibard','Warehouse','OTIF %'),ohP=get(d,'Oliver Harvey','Warehouse','OTIF %');
-  cards.push({label:'Group OTIF',value:w(d)!==null?pct(w(d)):'—',
+  cards.push({label:'Group OTIF',value:w(d)!==null?pct(w(d)):'—',warn:w(d)!==null&&w(d)<0.95,
     deltas:deltaHTML(w(d),w(pm),'vs '+fmtMonth(pm).split(' ')[0],{pctPoints:true})+deltaHTML(w(d),w(ya),'vs LY',{pctPoints:true}),
     split:`<span><span class="dot tib"></span>Tibard <b>${tibP!==null?pct(tibP):'—'}</b></span><span><span class="dot oh"></span>OH <b>${ohP!==null?pct(ohP):'—'}</b></span>`});
 
@@ -262,10 +331,10 @@ function renderCards(d){
     split:`<span>Cartons <b>${cart!==null?num(cart):'—'}</b></span>`});
 
   document.getElementById('cards').innerHTML=cards.map(c=>`
-    <div class="card">
+    <div class="card${c.warn?' warn':''}">
       <div class="k-label">${c.label}</div>
       <div class="k-value">${c.value}</div>
-      <div class="k-sub">${c.deltas}</div>
+      <div class="deltas">${c.deltas}</div>
       <div class="split">${c.split}</div>
     </div>`).join('');
 }
@@ -278,66 +347,95 @@ function renderCharts(sel){
   const win=MONTHS.slice(Math.max(0,idx-12),idx+1);
   const labels=win.map(fmtMonth);
   const css=getComputedStyle(document.documentElement);
-  const TIB=css.getPropertyValue('--tibard').trim(),OH=css.getPropertyValue('--oh').trim(),
-        GRP=css.getPropertyValue('--group').trim(),INK=css.getPropertyValue('--ink').trim();
-  Chart.defaults.font.family="'Archivo',sans-serif";
-  Chart.defaults.color=INK;
-  const grid={color:'#EDEAE2'};
+  const cv=n=>css.getPropertyValue(n).trim();
+  const TIB=cv('--tibard'),TIB2=cv('--tibard-2'),OH=cv('--oh'),OH2=cv('--oh-2'),
+        INK=cv('--ink'),MUTED=cv('--muted'),RED=cv('--brand-red');
+  Chart.defaults.font.family="'Inter',system-ui,sans-serif";
+  Chart.defaults.font.size=12;
+  Chart.defaults.color=MUTED;
+  Chart.defaults.plugins.legend.labels.boxWidth=12;
+  Chart.defaults.plugins.legend.labels.boxHeight=12;
+  Chart.defaults.plugins.legend.labels.usePointStyle=false;
+  Chart.defaults.plugins.tooltip.backgroundColor=INK;
+  Chart.defaults.plugins.tooltip.padding=10;
+  Chart.defaults.plugins.tooltip.cornerRadius=8;
+  const grid={color:'#E9EEF4'};
+  const legend={labels:{boxWidth:12,boxHeight:12}};
 
   mkChart('chOtif',{type:'line',data:{labels,datasets:[
-    {label:'Tibard',data:win.map(d=>{const v=get(d,'Tibard','Warehouse','OTIF %');return v!==null?v*100:null;}),borderColor:TIB,backgroundColor:TIB,tension:.25,pointRadius:3},
-    {label:'Oliver Harvey',data:win.map(d=>{const v=get(d,'Oliver Harvey','Warehouse','OTIF %');return v!==null?v*100:null;}),borderColor:OH,backgroundColor:OH,tension:.25,pointRadius:3},
-    {label:'Target 95%',data:win.map(()=>95),borderColor:'#B3392E',borderDash:[6,5],pointRadius:0,borderWidth:1.5}
-  ]},options:{maintainAspectRatio:false,scales:{y:{min:60,max:100,ticks:{callback:v=>v+'%'},grid},x:{grid:{display:false}}},plugins:{legend:{labels:{boxWidth:12,boxHeight:12}}}}});
+    {label:'Tibard',data:win.map(d=>{const v=get(d,'Tibard','Warehouse','OTIF %');return v!==null?v*100:null;}),borderColor:TIB,backgroundColor:TIB,tension:.25,pointRadius:3,borderWidth:2.5},
+    {label:'Oliver Harvey',data:win.map(d=>{const v=get(d,'Oliver Harvey','Warehouse','OTIF %');return v!==null?v*100:null;}),borderColor:OH,backgroundColor:OH,tension:.25,pointRadius:3,borderWidth:2.5},
+    {label:'Target 95%',data:win.map(()=>95),borderColor:RED,borderDash:[6,5],pointRadius:0,borderWidth:1.5}
+  ]},options:{maintainAspectRatio:false,scales:{y:{min:60,max:100,ticks:{callback:v=>v+'%'},grid},x:{grid:{display:false}}},plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw!==null?c.raw.toFixed(1)+'%':'—')}}}}});
 
-  mkChart('chProd',{type:'bar',data:{labels,datasets:[
-    {label:'Tibard on-shore',data:win.map(d=>get(d,'Tibard','Production','On-Shore Production £')),backgroundColor:TIB,stack:'s'},
-    {label:'Tibard off-shore',data:win.map(d=>get(d,'Tibard','Production','Off-Shore Production £')),backgroundColor:'#7FA3CE',stack:'s'},
-    {label:'OH on-shore',data:win.map(d=>get(d,'Oliver Harvey','Production','On-Shore Production £')),backgroundColor:OH,stack:'s'},
-    {label:'OH off-shore',data:win.map(d=>get(d,'Oliver Harvey','Production','Off-Shore Production £')),backgroundColor:'#D3BC7A',stack:'s'},
-    {label:'Off-shore (combined, 2025)',data:win.map(d=>get(d,'Group','Production','Off-Shore Production £')),backgroundColor:GRP,stack:'s'}
-  ]},options:{maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>gbpK(v)},grid}},plugins:{legend:{labels:{boxWidth:12,boxHeight:12}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw!==null?gbp(c.raw):'—')}}}}});
+  /* Production — one panel per source (off-shore / on-shore):
+     £ value as bars (left axis), garments as lines (right axis). */
+  const prodChart=(id,metricGBP,metricQty)=>{
+    const datasets=[
+      {label:'Tibard £',data:win.map(d=>get(d,'Tibard','Production',metricGBP)),backgroundColor:TIB,borderRadius:3,yAxisID:'y',order:2},
+      {label:'Oliver Harvey £',data:win.map(d=>get(d,'Oliver Harvey','Production',metricGBP)),backgroundColor:OH,borderRadius:3,yAxisID:'y',order:2},
+      {label:'Tibard garments',type:'line',data:win.map(d=>get(d,'Tibard','Production',metricQty)),borderColor:INK,backgroundColor:INK,pointBackgroundColor:'#fff',pointBorderWidth:2,pointRadius:3.5,borderWidth:2,tension:.25,yAxisID:'y2',order:1,spanGaps:true},
+      {label:'Oliver Harvey garments',type:'line',data:win.map(d=>get(d,'Oliver Harvey','Production',metricQty)),borderColor:OH,backgroundColor:OH,pointBackgroundColor:'#fff',pointBorderWidth:2,pointRadius:3.5,borderWidth:2,borderDash:[5,4],tension:.25,yAxisID:'y2',order:1,spanGaps:true}
+    ];
+    mkChart(id,{type:'bar',data:{labels,datasets},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      scales:{
+        x:{grid:{display:false}},
+        y:{position:'left',beginAtZero:true,ticks:{callback:v=>gbpK(v)},grid,title:{display:true,text:'£ value',color:MUTED,font:{size:11,weight:'600'}}},
+        y2:{position:'right',beginAtZero:true,ticks:{callback:v=>num(v)},grid:{drawOnChartArea:false},title:{display:true,text:'Garments',color:MUTED,font:{size:11,weight:'600'}}}
+      },
+      plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw===null||c.raw===undefined?'—':c.dataset.yAxisID==='y2'?num(c.raw):gbp(c.raw))}}}}});
+  };
+  prodChart('chProdOff','Off-Shore Production £','Off-Shore Production Qty');
+  prodChart('chProdOn','On-Shore Production £','On-Shore Production Qty');
 
   mkChart('chStock',{type:'line',data:{labels,datasets:[
-    {label:'Tibard',data:win.map(d=>get(d,'Tibard','Stock','Stock Valuation £')),borderColor:TIB,backgroundColor:TIB+'22',fill:true,tension:.25,pointRadius:3},
-    {label:'Oliver Harvey',data:win.map(d=>get(d,'Oliver Harvey','Stock','Stock Valuation £')),borderColor:OH,backgroundColor:OH+'22',fill:true,tension:.25,pointRadius:3}
-  ]},options:{maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>gbpK(v)},grid},x:{grid:{display:false}}},plugins:{legend:{labels:{boxWidth:12,boxHeight:12}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw!==null?gbp(c.raw):'—')}}}}});
+    {label:'Tibard',data:win.map(d=>get(d,'Tibard','Stock','Stock Valuation £')),borderColor:TIB,backgroundColor:TIB+'22',fill:true,tension:.25,pointRadius:3,borderWidth:2.5},
+    {label:'Oliver Harvey',data:win.map(d=>get(d,'Oliver Harvey','Stock','Stock Valuation £')),borderColor:OH,backgroundColor:OH+'22',fill:true,tension:.25,pointRadius:3,borderWidth:2.5}
+  ]},options:{maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>gbpK(v)},grid},x:{grid:{display:false}}},plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw!==null?gbp(c.raw):'—')}}}}});
 
   mkChart('chWh',{type:'bar',data:{labels,datasets:[
-    {label:'Tibard orders',data:win.map(d=>get(d,'Tibard','Warehouse','Orders Despatched')),backgroundColor:TIB,stack:'o'},
-    {label:'OH orders',data:win.map(d=>get(d,'Oliver Harvey','Warehouse','Orders Despatched')),backgroundColor:OH,stack:'o'},
-    {label:'DPD consignments',type:'line',data:win.map(d=>get(d,'Group','Warehouse','DPD Consignments')),borderColor:INK,backgroundColor:INK,tension:.25,pointRadius:3}
-  ]},options:{maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid}},plugins:{legend:{labels:{boxWidth:12,boxHeight:12}}}}});
+    {label:'Tibard orders',data:win.map(d=>get(d,'Tibard','Warehouse','Orders Despatched')),backgroundColor:TIB,stack:'o',borderRadius:3},
+    {label:'OH orders',data:win.map(d=>get(d,'Oliver Harvey','Warehouse','Orders Despatched')),backgroundColor:OH,stack:'o',borderRadius:3},
+    {label:'DPD consignments',type:'line',data:win.map(d=>get(d,'Group','Warehouse','DPD Consignments')),borderColor:INK,backgroundColor:INK,pointBackgroundColor:'#fff',pointBorderWidth:2,tension:.25,pointRadius:3.5,borderWidth:2}
+  ]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid,ticks:{callback:v=>num(v)}}},plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw!==null?num(c.raw):'—')}}}}});
 }
 
 function renderDetail(d){
   const pm=prevMonth(d),ya=yearAgo(d);
-  const rowsDef=[
-    ['Tibard OTIF','Tibard','Warehouse','OTIF %','pct'],
-    ['Oliver Harvey OTIF','Oliver Harvey','Warehouse','OTIF %','pct'],
-    ['Tibard orders despatched','Tibard','Warehouse','Orders Despatched','num'],
-    ['OH orders despatched','Oliver Harvey','Warehouse','Orders Despatched','num'],
-    ['Tibard late orders','Tibard','Warehouse','Late Orders','num'],
-    ['OH late orders','Oliver Harvey','Warehouse','Late Orders','num'],
-    ['Tibard on-shore production £','Tibard','Production','On-Shore Production £','gbp'],
-    ['Tibard on-shore qty','Tibard','Production','On-Shore Production Qty','num'],
-    ['Tibard off-shore £','Tibard','Production','Off-Shore Production £','gbp'],
-    ['Tibard off-shore qty','Tibard','Production','Off-Shore Production Qty','num'],
-    ['OH on-shore production £','Oliver Harvey','Production','On-Shore Production £','gbp'],
-    ['OH on-shore qty','Oliver Harvey','Production','On-Shore Production Qty','num'],
-    ['OH off-shore £','Oliver Harvey','Production','Off-Shore Production £','gbp'],
-    ['OH off-shore qty','Oliver Harvey','Production','Off-Shore Production Qty','num'],
-    ['Tibard stock valuation','Tibard','Stock','Stock Valuation £','gbp'],
-    ['OH stock valuation','Oliver Harvey','Stock','Stock Valuation £','gbp'],
-    ['DPD cartons','Group','Warehouse','DPD Cartons','num'],
-    ['DPD consignments','Group','Warehouse','DPD Consignments','num'],
+  const groups=[
+    ['Service',[
+      ['Tibard OTIF','Tibard','Warehouse','OTIF %','pct'],
+      ['Oliver Harvey OTIF','Oliver Harvey','Warehouse','OTIF %','pct'],
+      ['Tibard orders despatched','Tibard','Warehouse','Orders Despatched','num'],
+      ['OH orders despatched','Oliver Harvey','Warehouse','Orders Despatched','num'],
+      ['Tibard late orders','Tibard','Warehouse','Late Orders','num'],
+      ['OH late orders','Oliver Harvey','Warehouse','Late Orders','num'],
+      ['DPD consignments','Group','Warehouse','DPD Consignments','num'],
+      ['DPD cartons','Group','Warehouse','DPD Cartons','num']]],
+    ['Off-shore production',[
+      ['Tibard off-shore £','Tibard','Production','Off-Shore Production £','gbp'],
+      ['Tibard off-shore garments','Tibard','Production','Off-Shore Production Qty','num'],
+      ['OH off-shore £','Oliver Harvey','Production','Off-Shore Production £','gbp'],
+      ['OH off-shore garments','Oliver Harvey','Production','Off-Shore Production Qty','num'],
+      ['Combined off-shore £ (pre-split)','Group','Production','Off-Shore Production £','gbp']]],
+    ['On-shore production',[
+      ['Tibard on-shore £','Tibard','Production','On-Shore Production £','gbp'],
+      ['Tibard on-shore garments','Tibard','Production','On-Shore Production Qty','num'],
+      ['OH on-shore £','Oliver Harvey','Production','On-Shore Production £','gbp'],
+      ['OH on-shore garments','Oliver Harvey','Production','On-Shore Production Qty','num']]],
+    ['Stock',[
+      ['Tibard stock valuation','Tibard','Stock','Stock Valuation £','gbp'],
+      ['OH stock valuation','Oliver Harvey','Stock','Stock Valuation £','gbp']]],
   ];
   const f=(v,t)=>v===null?'—':t==='pct'?pct(v):t==='gbp'?gbp(v):num(v);
-  const body=rowsDef.map(([lbl,b,a,m,t])=>{
-    return `<tr><td>${lbl}</td><td class="num">${f(get(d,b,a,m),t)}</td><td class="num">${f(get(pm,b,a,m),t)}</td><td class="num">${f(get(ya,b,a,m),t)}</td></tr>`;
+  const body=groups.map(([g,rows])=>{
+    const rs=rows.filter(([,b,a,m])=>get(d,b,a,m)!==null||get(pm,b,a,m)!==null||get(ya,b,a,m)!==null);
+    if(!rs.length)return '';
+    return `<tr class="grp"><td colspan="4">${g}</td></tr>`+rs.map(([lbl,b,a,m,t])=>
+      `<tr><td>${lbl}</td><td class="num cur">${f(get(d,b,a,m),t)}</td><td class="num">${f(get(pm,b,a,m),t)}</td><td class="num">${f(get(ya,b,a,m),t)}</td></tr>`).join('');
   }).join('');
   document.getElementById('detail').innerHTML=
-    `<thead><tr><th>Metric</th><th>${fmtMonth(d)}</th><th>${fmtMonth(pm)}</th><th>${fmtMonth(ya)}</th></tr></thead><tbody>${body}</tbody>`;
+    `<thead><tr><th>Metric</th><th>${fmtMonth(d)}</th><th>${fmtMonth(pm)}</th><th>${fmtMonth(ya)} (LY)</th></tr></thead><tbody>${body}</tbody>`;
 }
 
 function render(){
@@ -358,7 +456,7 @@ async function loadDashboard(url){
   sel.innerHTML=MONTHS.map(m=>`<option value="${m}">${fmtMonth(m)}</option>`).join('');
   sel.value=MONTHS[MONTHS.length-1];
   sel.addEventListener('change',render);
-  document.getElementById('srcBadge').textContent='live · Google Sheet';
+  const badge=document.getElementById('srcBadge');badge.textContent='Live · Google Sheet';badge.classList.add('live');
   render();
 }
 
