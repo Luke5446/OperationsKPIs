@@ -349,7 +349,7 @@ function renderCharts(sel){
   const css=getComputedStyle(document.documentElement);
   const cv=n=>css.getPropertyValue(n).trim();
   const TIB=cv('--tibard'),TIB2=cv('--tibard-2'),OH=cv('--oh'),OH2=cv('--oh-2'),
-        GRP=cv('--group'),INK=cv('--ink'),MUTED=cv('--muted'),RED=cv('--brand-red');
+        INK=cv('--ink'),MUTED=cv('--muted'),RED=cv('--brand-red');
   Chart.defaults.font.family="'Inter',system-ui,sans-serif";
   Chart.defaults.font.size=12;
   Chart.defaults.color=MUTED;
@@ -370,18 +370,13 @@ function renderCharts(sel){
 
   /* Production — one panel per source (off-shore / on-shore):
      £ value as bars (left axis), garments as lines (right axis). */
-  const prodChart=(id,metricGBP,metricQty,combined)=>{
+  const prodChart=(id,metricGBP,metricQty)=>{
     const datasets=[
       {label:'Tibard £',data:win.map(d=>get(d,'Tibard','Production',metricGBP)),backgroundColor:TIB,borderRadius:3,yAxisID:'y',order:2},
       {label:'Oliver Harvey £',data:win.map(d=>get(d,'Oliver Harvey','Production',metricGBP)),backgroundColor:OH,borderRadius:3,yAxisID:'y',order:2},
       {label:'Tibard garments',type:'line',data:win.map(d=>get(d,'Tibard','Production',metricQty)),borderColor:INK,backgroundColor:INK,pointBackgroundColor:'#fff',pointBorderWidth:2,pointRadius:3.5,borderWidth:2,tension:.25,yAxisID:'y2',order:1,spanGaps:true},
       {label:'Oliver Harvey garments',type:'line',data:win.map(d=>get(d,'Oliver Harvey','Production',metricQty)),borderColor:OH,backgroundColor:OH,pointBackgroundColor:'#fff',pointBorderWidth:2,pointRadius:3.5,borderWidth:2,borderDash:[5,4],tension:.25,yAxisID:'y2',order:1,spanGaps:true}
     ];
-    if(combined){
-      // 2025 months were recorded as a single combined off-shore figure, before the brands were split out
-      const grp=win.map(d=>get(d,'Group','Production',metricGBP));
-      if(grp.some(v=>v!==null))datasets.splice(2,0,{label:'Combined £ (pre-split, 2025)',data:grp,backgroundColor:GRP,borderRadius:3,yAxisID:'y',order:2});
-    }
     mkChart(id,{type:'bar',data:{labels,datasets},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       scales:{
         x:{grid:{display:false}},
@@ -390,8 +385,8 @@ function renderCharts(sel){
       },
       plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw===null||c.raw===undefined?'—':c.dataset.yAxisID==='y2'?num(c.raw):gbp(c.raw))}}}}});
   };
-  prodChart('chProdOff','Off-Shore Production £','Off-Shore Production Qty',true);
-  prodChart('chProdOn','On-Shore Production £','On-Shore Production Qty',false);
+  prodChart('chProdOff','Off-Shore Production £','Off-Shore Production Qty');
+  prodChart('chProdOn','On-Shore Production £','On-Shore Production Qty');
 
   mkChart('chStock',{type:'line',data:{labels,datasets:[
     {label:'Tibard',data:win.map(d=>get(d,'Tibard','Stock','Stock Valuation £')),borderColor:TIB,backgroundColor:TIB+'22',fill:true,tension:.25,pointRadius:3,borderWidth:2.5},
