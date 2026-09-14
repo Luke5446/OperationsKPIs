@@ -161,7 +161,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 18px 40px;font-size:.78rem;color
   <div class="section-title"><h2>Production</h2><span class="hint"><span class="range"></span> · £ value (bars) and garments (lines)</span></div>
   <div class="charts">
     <div class="panel wide tall">
-      <div class="panel-head"><h3>Off-shore production</h3><span class="meta">Clockwork · Tibard vs Oliver Harvey</span></div>
+      <div class="panel-head"><h3>Clockwork stock bought in</h3><span class="meta">Off-shore · by container booked-in month · Tibard vs Oliver Harvey</span></div>
       <div class="chart-wrap"><canvas id="chProdOff"></canvas></div>
     </div>
     <div class="panel wide tall">
@@ -276,7 +276,8 @@ const sum=(date,brands,area,metric)=>{
   return s;
 };
 /* On-shore = made in-house (Tibard + Oliver Harvey).
-   Off-shore = made by the supplier Clockwork; 2025 months carry a single combined "Group" figure. */
+   Off-shore = stock bought in from the supplier Clockwork, valued in the month the container is booked in;
+   2025 months carry a single combined "Group" figure. */
 const onTotal=d=>sum(d,['Tibard','Oliver Harvey'],'Production','On-Shore Production £');
 const offTotal=d=>sum(d,['Tibard','Oliver Harvey','Group'],'Production','Off-Shore Production £');
 
@@ -319,9 +320,9 @@ function renderCards(d){
     deltas:deltaHTML(ov,onTotal(pm),'vs '+fmtMonth(pm).split(' ')[0])+deltaHTML(ov,onTotal(ya),'vs LY'),
     split:brandSplit(get(d,'Tibard','Production','On-Shore Production £'),get(d,'Oliver Harvey','Production','On-Shore Production £'))});
 
-  // Clockwork production (off-shore, made by the supplier Clockwork)
+  // Clockwork stock bought in (off-shore, made by the supplier Clockwork; £ value by the month the container is booked in)
   const ckw=offTotal(d);
-  cards.push({label:'Clockwork Production',value:ckw!==null?gbpK(ckw):'—',
+  cards.push({label:'Clockwork Stock Bought In',value:ckw!==null?gbpK(ckw):'—',
     deltas:deltaHTML(ckw,offTotal(pm),'vs '+fmtMonth(pm).split(' ')[0])+deltaHTML(ckw,offTotal(ya),'vs LY'),
     split:brandSplit(get(d,'Tibard','Production','Off-Shore Production £'),get(d,'Oliver Harvey','Production','Off-Shore Production £'))});
 
@@ -459,7 +460,7 @@ function renderDetail(d){
       ['OH late orders',G('Oliver Harvey','Warehouse','Late Orders'),'num'],
       ['DPD consignments',G('Group','Warehouse','DPD Consignments'),'num'],
       ['DPD cartons',G('Group','Warehouse','DPD Cartons'),'num']]],
-    ['Off-shore production',[
+    ['Clockwork stock bought in (off-shore)',[
       ['Tibard off-shore £',G('Tibard','Production','Off-Shore Production £'),'gbp'],
       ['Tibard off-shore garments',G('Tibard','Production','Off-Shore Production Qty'),'num'],
       ['OH off-shore £',G('Oliver Harvey','Production','Off-Shore Production £'),'gbp'],
