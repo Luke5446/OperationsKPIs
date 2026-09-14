@@ -65,15 +65,15 @@ main{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
 .section-title:first-of-type{margin-top:4px}
 
 /* ---------- KPI tiles ---------- */
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(176px,1fr));gap:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 .card{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--chambray);border-radius:10px;padding:14px 16px 12px;display:flex;flex-direction:column;gap:8px;transition:transform .12s ease,box-shadow .12s ease}
 .card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
 .card.warn{border-top-color:var(--brand-red)}
-.card .k-label{font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card .k-value{font-family:'Archivo',sans-serif;font-weight:800;font-size:2.1rem;line-height:1.05;letter-spacing:-.01em}
+.card .k-label{font-size:.66rem;line-height:1.15;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.02em;min-height:2.3em;display:flex;align-items:flex-end}
+.card .k-value{font-family:'Archivo',sans-serif;font-weight:800;font-size:1.9rem;line-height:1.05;letter-spacing:-.01em;white-space:nowrap}
 .card.warn .k-value{color:var(--brand-red)}
 .deltas{display:flex;flex-wrap:wrap;gap:6px}
-.delta{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;background:var(--tagbg);color:var(--muted);border:1px solid var(--line)}
+.delta{display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:700;padding:3px 7px;border-radius:999px;white-space:nowrap;background:var(--tagbg);color:var(--muted);border:1px solid var(--line)}
 .delta .arr{font-size:.7em}
 .delta.up{background:#E8F1EA;color:var(--good);border-color:#C0D8C6}
 .delta.down{background:#FBEAE8;color:var(--bad);border-color:#E9BDB8}
@@ -161,7 +161,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 18px 40px;font-size:.78rem;color
   <div class="section-title"><h2>Production</h2><span class="hint"><span class="range"></span> · £ value (bars) and garments (lines)</span></div>
   <div class="charts">
     <div class="panel wide tall">
-      <div class="panel-head"><h3>Off-shore production</h3><span class="meta">Tibard vs Oliver Harvey</span></div>
+      <div class="panel-head"><h3>Clockwork stock bought in</h3><span class="meta">Off-shore · by container booked-in month · Tibard vs Oliver Harvey</span></div>
       <div class="chart-wrap"><canvas id="chProdOff"></canvas></div>
     </div>
     <div class="panel wide tall">
@@ -275,15 +275,11 @@ const sum=(date,brands,area,metric)=>{
   brands.forEach(b=>{const v=get(date,b,area,metric);if(v!==null)s=(s||0)+v;});
   return s;
 };
-const prodTotal=d=>{
-  let s=null;
-  ['Tibard','Oliver Harvey','Group'].forEach(b=>{
-    ['On-Shore Production £','Off-Shore Production £'].forEach(m=>{
-      const v=get(d,b,'Production',m); if(v!==null)s=(s||0)+v;
-    });
-  });
-  return s;
-};
+/* On-shore = made in-house (Tibard + Oliver Harvey).
+   Off-shore = stock bought in from the supplier Clockwork, valued in the month the container is booked in;
+   2025 months carry a single combined "Group" figure. */
+const onTotal=d=>sum(d,['Tibard','Oliver Harvey'],'Production','On-Shore Production £');
+const offTotal=d=>sum(d,['Tibard','Oliver Harvey','Group'],'Production','Off-Shore Production £');
 
 function prevMonth(d){const[y,m]=d.split('-').map(Number);return m===1?`${y-1}-12`:`${y}-${String(m-1).padStart(2,'0')}`;}
 function yearAgo(d){const[y,m]=d.split('-');return `${+y-1}-${m}`;}
@@ -316,13 +312,19 @@ function renderCards(d){
     deltas:deltaHTML(w(d),w(pm),'vs '+fmtMonth(pm).split(' ')[0],{pctPoints:true})+deltaHTML(w(d),w(ya),'vs LY',{pctPoints:true}),
     split:`<span><span class="dot tib"></span>Tibard <b>${tibP!==null?pct(tibP):'—'}</b></span><span><span class="dot oh"></span>OH <b>${ohP!==null?pct(ohP):'—'}</b></span>`});
 
-  // Production value
-  const pv=prodTotal(d);
-  const tibPV=(get(d,'Tibard','Production','On-Shore Production £')||0)+(get(d,'Tibard','Production','Off-Shore Production £')||0);
-  const ohPV=(get(d,'Oliver Harvey','Production','On-Shore Production £')||0)+(get(d,'Oliver Harvey','Production','Off-Shore Production £')||0);
-  cards.push({label:'Production Value',value:pv!==null?gbpK(pv):'—',
-    deltas:deltaHTML(pv,prodTotal(pm),'vs '+fmtMonth(pm).split(' ')[0])+deltaHTML(pv,prodTotal(ya),'vs LY'),
-    split:`<span><span class="dot tib"></span>Tibard <b>${gbpK(tibPV)}</b></span><span><span class="dot oh"></span>OH <b>${gbpK(ohPV)}</b></span>`});
+  const brandSplit=(t,o)=>`<span><span class="dot tib"></span>Tibard <b>${t!==null?gbpK(t):'—'}</b></span><span><span class="dot oh"></span>OH <b>${o!==null?gbpK(o):'—'}</b></span>`;
+
+  // On-shore production (made in-house)
+  const ov=onTotal(d);
+  cards.push({label:'On-Shore Production',value:ov!==null?gbpK(ov):'—',
+    deltas:deltaHTML(ov,onTotal(pm),'vs '+fmtMonth(pm).split(' ')[0])+deltaHTML(ov,onTotal(ya),'vs LY'),
+    split:brandSplit(get(d,'Tibard','Production','On-Shore Production £'),get(d,'Oliver Harvey','Production','On-Shore Production £'))});
+
+  // Clockwork stock bought in (off-shore, made by the supplier Clockwork; £ value by the month the container is booked in)
+  const ckw=offTotal(d);
+  cards.push({label:'Clockwork Stock Bought In',value:ckw!==null?gbpK(ckw):'—',
+    deltas:deltaHTML(ckw,offTotal(pm),'vs '+fmtMonth(pm).split(' ')[0])+deltaHTML(ckw,offTotal(ya),'vs LY'),
+    split:brandSplit(get(d,'Tibard','Production','Off-Shore Production £'),get(d,'Oliver Harvey','Production','Off-Shore Production £'))});
 
   // Fabric cut (cutting room, metres) with cost of usage
   const fm=fabM(d), fc=fabC(d), fpm=fabPerM(d);
@@ -458,7 +460,7 @@ function renderDetail(d){
       ['OH late orders',G('Oliver Harvey','Warehouse','Late Orders'),'num'],
       ['DPD consignments',G('Group','Warehouse','DPD Consignments'),'num'],
       ['DPD cartons',G('Group','Warehouse','DPD Cartons'),'num']]],
-    ['Off-shore production',[
+    ['Clockwork stock bought in (off-shore)',[
       ['Tibard off-shore £',G('Tibard','Production','Off-Shore Production £'),'gbp'],
       ['Tibard off-shore garments',G('Tibard','Production','Off-Shore Production Qty'),'num'],
       ['OH off-shore £',G('Oliver Harvey','Production','Off-Shore Production £'),'gbp'],
