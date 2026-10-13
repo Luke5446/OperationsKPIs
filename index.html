@@ -46,6 +46,8 @@ header{background:var(--card);color:var(--ink);padding:12px 20px;display:flex;al
 .src-badge{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--tagbg);border:1px solid var(--line);color:var(--muted)}
 .src-badge.live{background:#E8F1EA;color:var(--brand-green);border-color:#C0D8C6}
 .src-badge.live::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brand-green);margin-right:6px;vertical-align:1px}
+.src-badge.warn{background:#FBF0E2;color:#9A5A17;border-color:#EBCDA5}
+.chip{display:inline-block;font-size:.58rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--tagbg);border:1px solid var(--line);color:var(--chambray);border-radius:999px;padding:1px 6px;margin-left:6px;vertical-align:2px;line-height:1.3}
 .month-ctl{display:flex;align-items:center;gap:8px}
 .month-ctl label{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 select{font:inherit;font-weight:600;font-size:.88rem;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 32px 7px 12px;cursor:pointer;appearance:none;-webkit-appearance:none;
@@ -65,11 +67,13 @@ main{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
 .section-title:first-of-type{margin-top:4px}
 
 /* ---------- KPI tiles ---------- */
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
 .card{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--chambray);border-radius:10px;padding:14px 16px 12px;display:flex;flex-direction:column;gap:8px;transition:transform .12s ease,box-shadow .12s ease}
 .card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
 .card.warn{border-top-color:var(--brand-red)}
-.card .k-label{font-size:.66rem;line-height:1.15;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.02em;min-height:2.3em;display:flex;align-items:flex-end}
+.card .k-label{font-size:.68rem;line-height:1.15;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;flex-wrap:wrap}
+.card .k-sub{font-size:.74rem;color:var(--muted);margin-top:-4px}
+.card .note{font-size:.72rem;color:var(--amber)}
 .card .k-value{font-family:'Archivo',sans-serif;font-weight:800;font-size:1.9rem;line-height:1.05;letter-spacing:-.01em;white-space:nowrap}
 .card.warn .k-value{color:var(--brand-red)}
 .deltas{display:flex;flex-wrap:wrap;gap:6px}
@@ -78,6 +82,7 @@ main{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
 .delta.up{background:#E8F1EA;color:var(--good);border-color:#C0D8C6}
 .delta.down{background:#FBEAE8;color:var(--bad);border-color:#E9BDB8}
 .card .split{display:flex;gap:14px;flex-wrap:wrap;margin-top:auto;padding-top:9px;border-top:1px solid var(--line);font-size:.8rem;color:var(--muted)}
+.card .split+.split{margin-top:0;padding-top:7px;border-top:1px dashed var(--line)}
 .split b{font-weight:700;color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:.78rem}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 .dot.tib{background:var(--tibard)} .dot.oh{background:var(--oh)}
@@ -144,6 +149,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 18px 40px;font-size:.78rem;color
   </div>
   <div class="head-meta">
     <span class="src-badge" id="srcBadge">locked</span>
+    <span class="src-badge" id="feedBadge" hidden></span>
     <div class="month-ctl">
       <label for="monthSel">Month</label>
       <select id="monthSel" aria-label="Select reporting month"></select>
@@ -158,19 +164,23 @@ footer{max-width:1180px;margin:0 auto;padding:0 18px 40px;font-size:.78rem;color
   <div class="section-title"><h2>Headlines</h2><span class="hint"><span id="hlMonth"></span> · Tibard &amp; Oliver Harvey</span></div>
   <div class="cards" id="cards"></div>
 
-  <div class="section-title"><h2>Production</h2><span class="hint"><span class="range"></span> · £ value (bars) and garments (lines)</span></div>
+  <div class="section-title"><h2>Production</h2><span class="hint"><span class="range"></span> · value (bars) and garments (lines)</span></div>
   <div class="charts">
     <div class="panel wide tall">
-      <div class="panel-head"><h3>Clockwork stock bought in</h3><span class="meta">Off-shore · by container booked-in month · Tibard vs Oliver Harvey</span></div>
-      <div class="chart-wrap"><canvas id="chProdOff"></canvas></div>
+      <div class="panel-head"><h3>On-shore production</h3><span class="meta">£ value from the sheet · garments made from the production planner from Sep 2026</span></div>
+      <div class="chart-wrap"><canvas id="chProdOn"></canvas></div>
     </div>
     <div class="panel wide tall">
-      <div class="panel-head"><h3>On-shore production</h3><span class="meta">Tibard vs Oliver Harvey</span></div>
-      <div class="chart-wrap"><canvas id="chProdOn"></canvas></div>
+      <div class="panel-head"><h3>Works orders raised and completed</h3><span class="meta">Production planner · from Sep 2026</span></div>
+      <div class="chart-wrap"><canvas id="chWo"></canvas></div>
+    </div>
+    <div class="panel wide tall">
+      <div class="panel-head"><h3>Clockwork stock bought in</h3><span class="meta">USD from the sheet · containers and units from the stock planner from Sep 2026 · by booked-in month</span></div>
+      <div class="chart-wrap"><canvas id="chProdOff"></canvas></div>
     </div>
   </div>
 
-  <div class="section-title"><h2>Fabric</h2><span class="hint">Cutting room · metres cut (bars) and fabric cost of usage £ (lines), year on year</span></div>
+  <div class="section-title"><h2>Fabric</h2><span class="hint">Cutting room · metres cut (bars) and £ of fabric cut (lines), year on year · from the cutting log from Oct 2026</span></div>
   <div class="charts">
     <div class="panel wide tall">
       <div class="panel-head"><h3 id="fabTitle">Fabric cut</h3><span class="meta" id="fabMeta"></span></div>
@@ -198,7 +208,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 18px 40px;font-size:.78rem;color
   <div class="tablewrap"><div><table id="detail"></table></div></div>
 </main>
 
-<footer>Data: Google Sheet KPI table · Historic figures migrated from the board KPI workbook · Built for Tibard Ltd</footer>
+<footer>Data: Google Sheet KPI table, plus the production planner (works orders, garments made, fabric completed), the cutting log (fabric cut, WIP) and the stock planner (containers booked in) · Historic figures migrated from the board KPI workbook · Built for Tibard Ltd</footer>
 
 <script>
 /* ============ ENCRYPTED CONFIG ============
@@ -295,70 +305,281 @@ function deltaHTML(cur,ref,label,{pctPoints=false,invert=false}={}){
   return `<span class="delta ${cls}"><span class="arr">${arrow}</span>${txt} ${label}</span>`;
 }
 
-/* ================ render ================ */
-function renderCards(d){
-  const pm=prevMonth(d), ya=yearAgo(d);
-  const cards=[];
+/* ================ live feeds: production planner, cutting log, stock planner ================
+   The planner apps publish their state as JSON into public GitHub repos. GitHub Pages serves each
+   file (a minute or so behind the editor's publish); raw.githubusercontent.com is the fallback.
+   Nothing here needs a token. The sheet stays the source for everything typed by hand. */
+const FEEDS={
+  planner:['https://luke5446.github.io/Tibard-Productionplan/data.json','https://raw.githubusercontent.com/Luke5446/Tibard-Productionplan/main/data.json'],
+  cutlog:['https://luke5446.github.io/Tibard-Cutlog/cutlog.json','https://raw.githubusercontent.com/Luke5446/Tibard-Cutlog/main/cutlog.json'],
+  stock:['https://luke5446.github.io/Tibard-Stock-Planner/data.json','https://raw.githubusercontent.com/Luke5446/Tibard-Stock-Planner/main/data.json'],
+  plannerPage:['https://luke5446.github.io/Tibard-Productionplan/index.html','https://raw.githubusercontent.com/Luke5446/Tibard-Productionplan/main/index.html'],
+  prices:['data/fabric-prices.json']   // snapshot kept in this repo: the last resort for fabric £/m
+};
+/* The first month each feed replaces the figure typed into the sheet */
+const FEED_FROM={wo:'2026-09', clockwork:'2026-09', fabric:'2026-10'};
+const CUTLOG_FROM='2026-09-29';   // the cutting log began; a works order due before it was never on the log
+const CKW_USD_METRICS=['Clockwork Stock Bought In USD','Off-Shore Production USD','Off-Shore Production £'];   // the sheet's figure was always typed in USD
+const FEED={planner:null, cutlog:null, stock:null, prices:{}, priceSrc:'', status:{}, loaded:false, savedAt:{}};
+let FACTS={};
 
-  // Group OTIF (weighted)
-  const w=(dd)=>{
-    const to=get(dd,'Tibard','Warehouse','Orders Despatched'),tp=get(dd,'Tibard','Warehouse','OTIF %');
-    const oo=get(dd,'Oliver Harvey','Warehouse','Orders Despatched'),op=get(dd,'Oliver Harvey','Warehouse','OTIF %');
-    if(to===null||tp===null||oo===null||op===null)return null;
-    return (to*tp+oo*op)/(to+oo);
+const d2s=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const today=()=>d2s(new Date());
+const curMonth=()=>today().slice(0,7);
+const lastDay=m=>{const[y,mo]=m.split('-').map(Number);return m+'-'+String(new Date(y,mo,0).getDate()).padStart(2,'0');};
+const fmtStamp=iso=>{if(!iso)return '';const d=new Date(iso);if(isNaN(d))return iso;return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});};
+
+async function fetchFirst(urls,asJson=true){
+  let lastErr=null;
+  for(const u of urls){
+    try{const r=await fetch(u,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);return asJson?await r.json():await r.text();}
+    catch(e){lastErr=e;}
+  }
+  throw lastErr||new Error('no source');
+}
+/* The planner keeps its fabric cost list (standard £ per metre) as a table inside its page */
+function pricesFromPage(html){
+  const tag='var FABRIC_PRICES=', i=html.indexOf(tag); if(i<0)return null;
+  let depth=0,k=i+tag.length;
+  for(;k<html.length;k++){const ch=html[k];if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0){k++;break;}}}
+  try{const o=JSON.parse(html.slice(i+tag.length,k));return o&&typeof o==='object'?o:null;}catch(e){return null;}
+}
+async function loadFeeds(){
+  const jobs={
+    planner:fetchFirst(FEEDS.planner),
+    cutlog:fetchFirst(FEEDS.cutlog),
+    stock:fetchFirst(FEEDS.stock),
+    snapshot:fetchFirst(FEEDS.prices).then(j=>j&&j.prices?j.prices:j),
+    page:fetchFirst(FEEDS.plannerPage,false).then(pricesFromPage)
   };
-  const tibP=get(d,'Tibard','Warehouse','OTIF %'),ohP=get(d,'Oliver Harvey','Warehouse','OTIF %');
-  cards.push({label:'Group OTIF',value:w(d)!==null?pct(w(d)):'—',warn:w(d)!==null&&w(d)<0.95,
-    deltas:deltaHTML(w(d),w(pm),'vs '+fmtMonth(pm).split(' ')[0],{pctPoints:true})+deltaHTML(w(d),w(ya),'vs LY',{pctPoints:true}),
-    split:`<span><span class="dot tib"></span>Tibard <b>${tibP!==null?pct(tibP):'—'}</b></span><span><span class="dot oh"></span>OH <b>${ohP!==null?pct(ohP):'—'}</b></span>`});
+  const keys=Object.keys(jobs), results=await Promise.allSettled(keys.map(k=>jobs[k]));
+  const got={};
+  keys.forEach((k,i)=>{const r=results[i];got[k]=r.status==='fulfilled'?r.value:null;FEED.status[k]=r.status==='fulfilled'?'ok':String((r.reason&&r.reason.message)||r.reason||'failed');});
+  FEED.planner=got.planner&&Array.isArray(got.planner.completedWOs)?got.planner:null;
+  FEED.cutlog=got.cutlog&&Array.isArray(got.cutlog.entries)?got.cutlog:null;
+  FEED.stock=got.stock&&Array.isArray(got.stock.bookedPOs)?got.stock:null;
+  if(!FEED.planner&&got.planner)FEED.status.planner='unexpected shape';
+  if(!FEED.cutlog&&got.cutlog)FEED.status.cutlog='unexpected shape';
+  if(!FEED.stock&&got.stock)FEED.status.stock='unexpected shape';
+  // fabric £/m: the snapshot in this repo, overridden by the live table on the planner page,
+  // overridden again by a price table the planner may one day publish in its data.json
+  const up=o=>{const t={};Object.keys(o||{}).forEach(k=>{const v=+o[k];if(v>0)t[k.trim().toUpperCase()]=v;});return t;};
+  FEED.prices=Object.assign({},up(got.snapshot),up(got.page),up(FEED.planner&&FEED.planner.fabricPrices));
+  FEED.priceSrc=FEED.planner&&FEED.planner.fabricPrices?'planner data':got.page?'planner page':got.snapshot?'snapshot':'none';
+  FEED.savedAt={planner:FEED.planner&&FEED.planner.savedAt,cutlog:FEED.cutlog&&FEED.cutlog.savedAt,stock:FEED.stock&&FEED.stock.savedAt};
+  FEED.loaded=true;
+  try{ computeFeedFacts(); }
+  catch(e){ FACTS={}; FEED.planner=FEED.cutlog=FEED.stock=null; FEED.status.compute=String(e.message||e); }
+  refreshMonths();
+}
+/* The month list is the sheet's months plus any month a planner feed covers (from its cutover), up to this month */
+function refreshMonths(){
+  const cm=curMonth(), from=Object.values(FEED_FROM).sort()[0];
+  const extra=Object.keys(FACTS).filter(m=>m>=from&&m<=cm);
+  const all=[...new Set(MONTHS.concat(extra))].sort();
+  if(all.length===MONTHS.length)return;
+  MONTHS=all;
+  const sel=document.getElementById('monthSel'), keep=sel.value;
+  sel.innerHTML=MONTHS.map(m=>`<option value="${m}">${fmtMonth(m)}</option>`).join('');
+  sel.value=MONTHS.includes(keep)?keep:MONTHS[MONTHS.length-1];
+}
 
-  const brandSplit=(t,o)=>`<span><span class="dot tib"></span>Tibard <b>${t!==null?gbpK(t):'—'}</b></span><span><span class="dot oh"></span>OH <b>${o!==null?gbpK(o):'—'}</b></span>`;
+/* Brand of a garment: a special make carries its Sage company; otherwise an OH product code is
+   Oliver Harvey and everything else (Tibard codes and customer-branded codes) is Tibard. */
+const brandOf=(code,ref,company)=>{
+  if(company)return /OLIVER/i.test(company)?'OH':'Tibard';
+  if(/^OH/i.test(code||'')||/^S-OH/i.test(ref||''))return 'OH';
+  return 'Tibard';
+};
+const priceFor=code=>{const p=FEED.prices[(code||'').trim().toUpperCase()];return p>0?p:null;};
+const cutMetres=e=>e.metres!=null?e.metres:(e.std!=null?e.std:0);
 
-  // On-shore production (made in-house)
-  const ov=onTotal(d);
-  cards.push({label:'On-Shore Production',value:ov!==null?gbpK(ov):'—',
-    deltas:deltaHTML(ov,onTotal(pm),'vs '+fmtMonth(pm).split(' ')[0])+deltaHTML(ov,onTotal(ya),'vs LY'),
-    split:brandSplit(get(d,'Tibard','Production','On-Shore Production £'),get(d,'Oliver Harvey','Production','On-Shore Production £'))});
+function computeFeedFacts(){
+  FACTS={};
+  const F=m=>FACTS[m]||(FACTS[m]={
+    wo:{done:new Set(),doneOH:new Set(),doneTib:new Set(),raised:new Set(),unitsOH:0,unitsTib:0,lines:0,refBrand:{}},
+    fab:{cutM:0,cutGBP:0,cutLines:0,cutWOs:new Set(),cutUnpriced:0,doneM:0,doneGBP:0,doneUnpriced:0,wip:null},
+    ckw:{containers:[],units:0,unitsOH:0,unitsTib:0,usd:null}
+  });
+  const P=FEED.planner, C=FEED.cutlog, S=FEED.stock;
+  const doneOn={};   // first completion of a works order line, as the planner dates it
+  if(P){
+    P.completedWOs.forEach(c=>{
+      if(!c.completed)return;
+      const m=c.completed.slice(0,7), f=F(m).wo, b=brandOf(c.code,c.ref,c.company);
+      f.done.add(c.ref); f.lines++;
+      if(b==='OH')f.unitsOH+=c.qty||0; else f.unitsTib+=c.qty||0;
+      // a works order with lines of both brands counts once, under the brand of most of its garments
+      const rb=f.refBrand[c.ref]||(f.refBrand[c.ref]={OH:0,Tibard:0}); rb[b]+=(c.qty||0)||1e-9;
+      const k=c.ref+'|'+c.code; if(!doneOn[k])doneOn[k]=c.completed;
+      // fabric written off on completion: the cutting room's metres where typed, else the standard,
+      // at the price frozen on the record (the planner's own ledger line)
+      const fb=c.fabric, g=F(m).fab;
+      if(fb&&fb.code){
+        const main=fb.actual!=null?fb.actual:fb.std, pr=fb.price!=null?fb.price:priceFor(fb.code);
+        if(main!=null){g.doneM+=main; if(pr!=null)g.doneGBP+=main*pr; else g.doneUnpriced++;}
+        (fb.extras||[]).forEach(x=>{const xm=x.actual!=null?x.actual:x.std, xp=x.price!=null?x.price:priceFor(x.code);
+          if(xm!=null){g.doneM+=xm; if(xp!=null)g.doneGBP+=xm*xp; else g.doneUnpriced++;}});
+      }
+    });
+    const seen=new Set();
+    (P.WOs||[]).concat(P.completedWOs).forEach(w=>{ const raised=w.createdAt||w.start||w.printedAt; if(!raised||seen.has(w.ref))return; seen.add(w.ref); F(raised.slice(0,7)).wo.raised.add(w.ref); });
+    Object.keys(FACTS).forEach(m=>{const f=FACTS[m].wo; Object.keys(f.refBrand).forEach(r=>{const rb=f.refBrand[r]; (rb.OH>rb.Tibard?f.doneOH:f.doneTib).add(r);});});
+  }
+  if(C){
+    C.entries.forEach(e=>{
+      if(e.cancelledAt||!e.cutAt)return;
+      const m=e.cutAt.slice(0,7), g=F(m).fab, mm=cutMetres(e), pr=priceFor(e.fabric);
+      g.cutM+=mm; g.cutLines++; g.cutWOs.add(e.ref);
+      if(pr!=null)g.cutGBP+=mm*pr; else g.cutUnpriced++;
+    });
+    if(P){
+      const live={}; (P.WOs||[]).forEach(w=>{live[w.ref]=w;});
+      const onLog=new Set(C.entries.map(e=>e.ref)), liveKeys=new Set(C.entries.filter(e=>!e.cancelledAt).map(e=>e.k));
+      const wipAt=asAt=>{
+        const w={asAt,metres:0,value:0,lines:0,unpriced:0,assumedLines:0,assumedValue:0,notValued:0};
+        C.entries.forEach(e=>{
+          if(e.cancelledAt){
+            // printed before the log began and withdrawn as "cut before there was a list": while the works
+            // order is still live its cloth is in WIP at the standard metres, as the planner takes it
+            if(live[e.ref]&&(e.printedAt||'')<=asAt&&!liveKeys.has(e.k)&&e.std!=null){const pr=priceFor(e.fabric);w.assumedLines++;w.lines++;w.metres+=e.std;if(pr!=null)w.assumedValue+=e.std*pr;else w.unpriced++;}
+            return;
+          }
+          if(!e.cutAt||e.cutAt>asAt)return;            // not cut yet: still on the roll
+          const done=doneOn[e.ref+'|'+e.code]; if(done&&done<=asAt)return;   // completed: written off, out of WIP
+          const mm=cutMetres(e), pr=priceFor(e.fabric); w.lines++; w.metres+=mm;
+          if(pr!=null)w.value+=mm*pr; else w.unpriced++;
+        });
+        Object.keys(live).forEach(r=>{const x=live[r]; if(x.printed&&!x.embOnly&&(!x.due||x.due>=CUTLOG_FROM)&&(x.printedAt||x.createdAt||'')<=asAt&&!onLog.has(r))w.notValued++;});
+        w.value+=w.assumedValue; w.toDate=asAt===today();
+        return w;
+      };
+      const months=new Set(Object.keys(FACTS).filter(m=>m>=FEED_FROM.fabric)); months.add(curMonth());
+      months.forEach(m=>{ if(m>curMonth())return; const end=lastDay(m); F(m).fab.wip=wipAt(end<today()?end:today()); });
+    }
+  }
+  if(S){
+    S.bookedPOs.forEach(b=>{
+      const ref=(b.ref||'').trim(); if(!/^(C|AF)\d/i.test(ref))return;   // C = container, AF = airfreight; anything else is another supplier
+      const date=b.bookedDate||b.date||''; if(!date)return;
+      const m=date.slice(0,7), g=F(m).ckw, c={ref,date,units:0,unitsOH:0,unitsTib:0,lines:(b.items||[]).length,usd:null};
+      (b.items||[]).forEach(it=>{const q=it.qty||0;c.units+=q;if(brandOf(it.code)==='OH')c.unitsOH+=q;else c.unitsTib+=q;});
+      const v=b.valueUSD!=null?b.valueUSD:(b.usd!=null?b.usd:null); if(v!=null){c.usd=+v;g.usd=(g.usd||0)+ +v;}   // if the stock planner ever carries a value
+      g.containers.push(c); g.units+=c.units; g.unitsOH+=c.unitsOH; g.unitsTib+=c.unitsTib;
+    });
+  }
+}
 
-  // Clockwork stock bought in (off-shore, made by the supplier Clockwork; £ value by the month the container is booked in)
-  const ckw=offTotal(d);
-  cards.push({label:'Clockwork Stock Bought In',value:ckw!==null?gbpK(ckw):'—',
-    deltas:deltaHTML(ckw,offTotal(pm),'vs '+fmtMonth(pm).split(' ')[0])+deltaHTML(ckw,offTotal(ya),'vs LY'),
-    split:brandSplit(get(d,'Tibard','Production','Off-Shore Production £'),get(d,'Oliver Harvey','Production','Off-Shore Production £'))});
+/* ---- source-aware readers: the feed from its cutover month, the sheet before (and when a feed is down) ---- */
+const hasFeed=k=>FEED.loaded&&!!FEED[k];
+const feedMonth=(m,from,k)=>hasFeed(k)&&m>=from;
+const fx=m=>FACTS[m];
+const brandName=b=>b==='OH'?'Oliver Harvey':b==='Tibard'?'Tibard':'Group';
+function unitsMade(m,b){ if(feedMonth(m,FEED_FROM.wo,'planner')){const f=fx(m);return f?(b==='OH'?f.wo.unitsOH:f.wo.unitsTib):0;} return get(m,brandName(b),'Production','On-Shore Production Qty'); }
+function woDone(m,b){ if(!feedMonth(m,FEED_FROM.wo,'planner'))return null; const f=fx(m); if(!f)return 0; return b==='OH'?f.wo.doneOH.size:b==='Tibard'?f.wo.doneTib.size:f.wo.done.size; }
+function woRaised(m){ if(!feedMonth(m,FEED_FROM.wo,'planner'))return null; const f=fx(m); return f?f.wo.raised.size:0; }
+const fabFeed=m=>feedMonth(m,FEED_FROM.fabric,'cutlog');
+function fabCutM(m){ if(fabFeed(m)){const f=fx(m);return f?f.fab.cutM:0;} return fabM(m); }
+function fabCutGBP(m){ if(fabFeed(m)){const f=fx(m);return f?f.fab.cutGBP:0;} return fabC(m); }
+function fabCutPerM(m){ const a=fabCutM(m),c=fabCutGBP(m); return a&&c!==null?c/a:null; }
+function fabDoneGBP(m){ if(!(fabFeed(m)&&hasFeed('planner')))return null; const f=fx(m); return f?f.fab.doneGBP:0; }
+function fabDoneM(m){ if(!(fabFeed(m)&&hasFeed('planner')))return null; const f=fx(m); return f?f.fab.doneM:0; }
+function fabWip(m){ if(!(fabFeed(m)&&hasFeed('planner')))return null; const f=fx(m); return f&&f.fab.wip?f.fab.wip:null; }
+function ckwUSD(m,b){ for(const met of CKW_USD_METRICS){const v=get(m,brandName(b),'Production',met);if(v!==null)return v;} return null; }
+function ckwUSDTotal(m){ if(feedMonth(m,FEED_FROM.clockwork,'stock')){const f=fx(m);if(f&&f.ckw.usd!==null)return f.ckw.usd;} let s=null;['Tibard','OH','Group'].forEach(b=>{const v=ckwUSD(m,b);if(v!==null)s=(s||0)+v;});return s; }
+const ckwFeed=m=>feedMonth(m,FEED_FROM.clockwork,'stock');
+function ckwUnits(m,b){ if(ckwFeed(m)){const f=fx(m);return f?(b==='OH'?f.ckw.unitsOH:b==='Tibard'?f.ckw.unitsTib:f.ckw.units):0;} if(b==='all'){return sum(m,['Tibard','Oliver Harvey','Group'],'Production','Off-Shore Production Qty');} return get(m,brandName(b),'Production','Off-Shore Production Qty'); }
+function ckwContainers(m){ if(!ckwFeed(m))return []; const f=fx(m); return f?f.ckw.containers:[]; }
 
-  // Fabric cut (cutting room, metres) with cost of usage
-  const fm=fabM(d), fc=fabC(d), fpm=fabPerM(d);
-  cards.push({label:'Fabric Cut',value:fm!==null?num(fm)+' m':'—',
-    deltas:deltaHTML(fm,fabM(pm),'vs '+fmtMonth(pm).split(' ')[0])+deltaHTML(fm,fabM(ya),'vs LY'),
-    split:`<span>Cost <b>${fc!==null?gbpK(fc):'—'}</b></span><span>Avg <b>${fpm!==null?gbp2(fpm)+'/m':'—'}</b></span>`});
+function feedBadge(){
+  const el=document.getElementById('feedBadge'); if(!el)return; el.hidden=false;
+  if(!FEED.loaded){el.textContent='Reading planners…';el.className='src-badge';return;}
+  const parts=[], bad=[];
+  if(FEED.planner)parts.push('Planner '+fmtStamp(FEED.savedAt.planner)); else bad.push('production planner');
+  if(FEED.cutlog)parts.push('Cut log '+fmtStamp(FEED.savedAt.cutlog)); else bad.push('cutting log');
+  if(FEED.stock)parts.push('Stock plan '+fmtStamp(FEED.savedAt.stock)); else bad.push('stock planner');
+  el.className='src-badge '+(bad.length?'warn':'live');
+  el.textContent=bad.length?('⚠ '+bad.join(', ')+' unavailable · sheet figures shown'+(parts.length?' · '+parts.join(' · '):'')+(FEED.status.compute?' · '+FEED.status.compute:'')):parts.join(' · ');
+  el.title='Fabric £/m from: '+FEED.priceSrc;
+}
 
-  // Stock valuation (lower = good)
+/* ================ render ================ */
+const money=(v,sym='£')=>{const a=Math.abs(v);return a>=1e6?sym+(v/1e6).toFixed(2)+'m':a>=1e5?sym+Math.round(v/1e3)+'k':a>=1e4?sym+(v/1e3).toFixed(1)+'k':sym+Math.round(v).toLocaleString('en-GB');};
+const usd=v=>'$'+Math.round(v).toLocaleString('en-GB');
+const usdK=v=>money(v,'$');
+const chip=s=>s?`<span class="chip">${s}</span>`:'';
+const dotT='<span class="dot tib"></span>', dotO='<span class="dot oh"></span>';
+
+function renderCards(d){
+  const pm=prevMonth(d), ya=yearAgo(d), pmL='vs '+fmtMonth(pm).split(' ')[0], isCur=d===curMonth();
+  const cards=[];
+  const brandSplit=(t,o,f=money)=>`<span>${dotT}Tibard <b>${t!==null?f(t):'—'}</b></span><span>${dotO}OH <b>${o!==null?f(o):'—'}</b></span>`;
+  const v=(x,f)=>x!==null&&x!==undefined?f(x):'—';
+
+  // 1 On-shore production: £ typed in the sheet; garments made from the planner from Sep 2026
+  const ov=onTotal(d), uOH=unitsMade(d,'OH'), uT=unitsMade(d,'Tibard');
+  cards.push({label:'On-Shore Production',value:v(ov,money),sub:'£ made in-house'+(isCur?' · to date':''),
+    deltas:deltaHTML(ov,onTotal(pm),pmL)+deltaHTML(ov,onTotal(ya),'vs LY'),
+    split:brandSplit(get(d,'Tibard','Production','On-Shore Production £'),get(d,'Oliver Harvey','Production','On-Shore Production £')),
+    split2:`<span>Made${chip(feedMonth(d,FEED_FROM.wo,'planner')?'planner':'')} ${dotO}OH <b>${v(uOH,num)}</b> · ${dotT}Tibard <b>${v(uT,num)}</b></span>`});
+
+  // 2 Works orders raised and completed (production planner, from Sep 2026)
+  const wd=woDone(d), wr=woRaised(d);
+  cards.push({label:'Works Orders',chip:wd!==null?'planner':'',value:v(wd,num),sub:wd!==null?'completed in the month'+(isCur?' · to date':''):'from the planner, Sep 2026 on',
+    deltas:deltaHTML(wd,woDone(pm),pmL)+deltaHTML(wd,woDone(ya),'vs LY'),
+    split:`<span>Raised <b>${v(wr,num)}</b></span><span>Completed ${dotO}OH <b>${v(woDone(d,'OH'),num)}</b> · ${dotT}Tibard <b>${v(woDone(d,'Tibard'),num)}</b></span>`});
+
+  // 3 Clockwork stock bought in: USD typed in the sheet; containers and units from the stock planner from Sep 2026
+  const ck=ckwUSDTotal(d), conts=ckwContainers(d), cu=ckwUnits(d,'all');
+  cards.push({label:'Clockwork Stock Bought In',chip:fx(d)&&fx(d).ckw.usd!==null?'stock planner':'',value:v(ck,usdK),sub:'USD · by container booked-in month',
+    deltas:deltaHTML(ck,ckwUSDTotal(pm),pmL)+deltaHTML(ck,ckwUSDTotal(ya),'vs LY'),
+    split:brandSplit(ckwUSD(d,'Tibard'),ckwUSD(d,'OH'),usdK),
+    split2:ckwFeed(d)?`<span>${conts.length?conts.map(c=>c.ref).join(', '):'No containers booked in'}${cu?' · <b>'+num(cu)+'</b> units':''}${chip('stock planner')}</span>`
+                     :`<span>Units ${dotO}OH <b>${v(ckwUnits(d,'OH'),num)}</b> · ${dotT}Tibard <b>${v(ckwUnits(d,'Tibard'),num)}</b></span>`});
+
+  // 4 Stock valuation (lower = good)
   const sv=sum(d,['Tibard','Oliver Harvey'],'Stock','Stock Valuation £');
-  const tibS=get(d,'Tibard','Stock','Stock Valuation £'),ohS=get(d,'Oliver Harvey','Stock','Stock Valuation £');
-  cards.push({label:'Stock Valuation',value:sv!==null?gbpK(sv):'—',
-    deltas:deltaHTML(sv,sum(pm,['Tibard','Oliver Harvey'],'Stock','Stock Valuation £'),'vs '+fmtMonth(pm).split(' ')[0],{invert:true})+deltaHTML(sv,sum(ya,['Tibard','Oliver Harvey'],'Stock','Stock Valuation £'),'vs LY',{invert:true}),
-    split:`<span><span class="dot tib"></span>Tibard <b>${tibS!==null?gbpK(tibS):'—'}</b></span><span><span class="dot oh"></span>OH <b>${ohS!==null?gbpK(ohS):'—'}</b></span>`});
+  cards.push({label:'Stock Valuation',value:v(sv,money),sub:'£ at month end',
+    deltas:deltaHTML(sv,sum(pm,['Tibard','Oliver Harvey'],'Stock','Stock Valuation £'),pmL,{invert:true})+deltaHTML(sv,sum(ya,['Tibard','Oliver Harvey'],'Stock','Stock Valuation £'),'vs LY',{invert:true}),
+    split:brandSplit(get(d,'Tibard','Stock','Stock Valuation £'),get(d,'Oliver Harvey','Stock','Stock Valuation £'))});
 
-  // Orders despatched
-  const od=sum(d,['Tibard','Oliver Harvey'],'Warehouse','Orders Despatched');
-  const late=sum(d,['Tibard','Oliver Harvey'],'Warehouse','Late Orders');
-  cards.push({label:'Orders Despatched',value:od!==null?num(od):'—',
-    deltas:deltaHTML(od,sum(pm,['Tibard','Oliver Harvey'],'Warehouse','Orders Despatched'),'vs '+fmtMonth(pm).split(' ')[0])+deltaHTML(od,sum(ya,['Tibard','Oliver Harvey'],'Warehouse','Orders Despatched'),'vs LY'),
-    split:`<span>Late orders <b>${late!==null?num(late):'—'}</b></span>`});
+  // 5 Fabric: value cut in the month, what was completed (written off) and what is left in WIP at month end
+  const fc=fabCutGBP(d), fm=fabCutM(d), fpm=fabCutPerM(d), fd=fabDoneGBP(d), w=fabWip(d);
+  const cutUnp=fabFeed(d)&&fx(d)?fx(d).fab.cutUnpriced:0;
+  const wipNote=[(cutUnp?cutUnp+' cut line'+(cutUnp>1?'s':'')+' with no price':''),(w&&w.unpriced?w.unpriced+' WIP line'+(w.unpriced>1?'s':'')+' with no price':''),(w&&w.notValued?w.notValued+' works order'+(w.notValued>1?'s':'')+' not on the cutting log':'')].filter(Boolean).join(' · ');
+  cards.push({label:'Fabric Cut',chip:fabFeed(d)?'cutting log':'',value:v(fc,money),sub:fm!==null?num(fm)+' m'+(fpm!==null?' · '+gbp2(fpm)+'/m':'')+(isCur?' · to date':''):'',
+    deltas:deltaHTML(fc,fabCutGBP(pm),pmL)+deltaHTML(fc,fabCutGBP(ya),'vs LY'),
+    split:`<span>Completed <b>${v(fd,money)}</b></span><span>WIP${w&&w.toDate?' today':' month end'} <b>${w?(w.unpriced?'≥ ':'')+money(w.value):'—'}</b></span>`,
+    split2:wipNote?`<span class="note">${wipNote}</span>`:''});
 
-  // DPD consignments
-  const dc=get(d,'Group','Warehouse','DPD Consignments');
-  const cart=get(d,'Group','Warehouse','DPD Cartons');
-  cards.push({label:'DPD Consignments',value:dc!==null?num(dc):'—',
-    deltas:deltaHTML(dc,get(pm,'Group','Warehouse','DPD Consignments'),'vs '+fmtMonth(pm).split(' ')[0])+deltaHTML(dc,get(ya,'Group','Warehouse','DPD Consignments'),'vs LY'),
-    split:`<span>Cartons <b>${cart!==null?num(cart):'—'}</b></span>`});
+  // 6 Orders despatched
+  const od=sum(d,['Tibard','Oliver Harvey'],'Warehouse','Orders Despatched'), late=sum(d,['Tibard','Oliver Harvey'],'Warehouse','Late Orders');
+  cards.push({label:'Orders Despatched',value:v(od,num),
+    deltas:deltaHTML(od,sum(pm,['Tibard','Oliver Harvey'],'Warehouse','Orders Despatched'),pmL)+deltaHTML(od,sum(ya,['Tibard','Oliver Harvey'],'Warehouse','Orders Despatched'),'vs LY'),
+    split:`<span>Late orders <b>${v(late,num)}</b></span><span>${dotT}Tibard <b>${v(get(d,'Tibard','Warehouse','Orders Despatched'),num)}</b> · ${dotO}OH <b>${v(get(d,'Oliver Harvey','Warehouse','Orders Despatched'),num)}</b></span>`});
+
+  // 7 Group OTIF (weighted by orders)
+  const wOtif=dd=>{const to=get(dd,'Tibard','Warehouse','Orders Despatched'),tp=get(dd,'Tibard','Warehouse','OTIF %'),oo=get(dd,'Oliver Harvey','Warehouse','Orders Despatched'),op=get(dd,'Oliver Harvey','Warehouse','OTIF %');
+    if(to===null||tp===null||oo===null||op===null)return null;return (to*tp+oo*op)/(to+oo);};
+  const tibP=get(d,'Tibard','Warehouse','OTIF %'),ohP=get(d,'Oliver Harvey','Warehouse','OTIF %'), go=wOtif(d);
+  cards.push({label:'Group OTIF',value:v(go,pct),sub:'on time in full · target 95%',warn:go!==null&&go<0.95,
+    deltas:deltaHTML(go,wOtif(pm),pmL,{pctPoints:true})+deltaHTML(go,wOtif(ya),'vs LY',{pctPoints:true}),
+    split:brandSplit(tibP,ohP,pct)});
+
+  // 8 DPD consignments
+  const dc=get(d,'Group','Warehouse','DPD Consignments'), cart=get(d,'Group','Warehouse','DPD Cartons');
+  cards.push({label:'DPD Consignments',value:v(dc,num),
+    deltas:deltaHTML(dc,get(pm,'Group','Warehouse','DPD Consignments'),pmL)+deltaHTML(dc,get(ya,'Group','Warehouse','DPD Consignments'),'vs LY'),
+    split:`<span>Cartons <b>${v(cart,num)}</b></span>`});
 
   document.getElementById('cards').innerHTML=cards.map(c=>`
     <div class="card${c.warn?' warn':''}">
-      <div class="k-label">${c.label}</div>
+      <div class="k-label">${c.label}${chip(c.chip)}</div>
       <div class="k-value">${c.value}</div>
+      ${c.sub?`<div class="k-sub">${c.sub}</div>`:''}
       <div class="deltas">${c.deltas}</div>
       <div class="split">${c.split}</div>
+      ${c.split2?`<div class="split">${c.split2}</div>`:''}
     </div>`).join('');
 }
 
@@ -375,14 +596,14 @@ function renderCharts(sel){
   Chart.defaults.font.family="'Inter',system-ui,sans-serif";
   Chart.defaults.font.size=12;
   Chart.defaults.color=MUTED;
-  Chart.defaults.plugins.legend.labels.boxWidth=12;
-  Chart.defaults.plugins.legend.labels.boxHeight=12;
-  Chart.defaults.plugins.legend.labels.usePointStyle=false;
   Chart.defaults.plugins.tooltip.backgroundColor=INK;
   Chart.defaults.plugins.tooltip.padding=10;
   Chart.defaults.plugins.tooltip.cornerRadius=8;
   const grid={color:'#E9EEF4'};
   const legend={labels:{boxWidth:12,boxHeight:12}};
+  const nz=x=>x===null||x===undefined?'—':x;
+  const lineOpts={pointBackgroundColor:'#fff',pointBorderWidth:2,pointRadius:3.5,borderWidth:2,tension:.25,spanGaps:true};
+  const axisTitle=t=>({display:true,text:t,color:MUTED,font:{size:11,weight:'600'}});
 
   mkChart('chOtif',{type:'line',data:{labels,datasets:[
     {label:'Tibard',data:win.map(d=>{const v=get(d,'Tibard','Warehouse','OTIF %');return v!==null?v*100:null;}),borderColor:TIB,backgroundColor:TIB,tension:.25,pointRadius:3,borderWidth:2.5},
@@ -390,25 +611,31 @@ function renderCharts(sel){
     {label:'Target 95%',data:win.map(()=>95),borderColor:RED,borderDash:[6,5],pointRadius:0,borderWidth:1.5}
   ]},options:{maintainAspectRatio:false,scales:{y:{min:60,max:100,ticks:{callback:v=>v+'%'},grid},x:{grid:{display:false}}},plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw!==null?c.raw.toFixed(1)+'%':'—')}}}}});
 
-  /* Production — one panel per source (off-shore / on-shore):
-     £ value as bars (left axis), garments as lines (right axis). */
-  const prodChart=(id,metricGBP,metricQty)=>{
-    const datasets=[
-      {label:'Tibard £',data:win.map(d=>get(d,'Tibard','Production',metricGBP)),backgroundColor:TIB,borderRadius:3,yAxisID:'y',order:2},
-      {label:'Oliver Harvey £',data:win.map(d=>get(d,'Oliver Harvey','Production',metricGBP)),backgroundColor:OH,borderRadius:3,yAxisID:'y',order:2},
-      {label:'Tibard garments',type:'line',data:win.map(d=>get(d,'Tibard','Production',metricQty)),borderColor:INK,backgroundColor:INK,pointBackgroundColor:'#fff',pointBorderWidth:2,pointRadius:3.5,borderWidth:2,tension:.25,yAxisID:'y2',order:1,spanGaps:true},
-      {label:'Oliver Harvey garments',type:'line',data:win.map(d=>get(d,'Oliver Harvey','Production',metricQty)),borderColor:OH,backgroundColor:OH,pointBackgroundColor:'#fff',pointBorderWidth:2,pointRadius:3.5,borderWidth:2,borderDash:[5,4],tension:.25,yAxisID:'y2',order:1,spanGaps:true}
-    ];
-    mkChart(id,{type:'bar',data:{labels,datasets},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-      scales:{
-        x:{grid:{display:false}},
-        y:{position:'left',beginAtZero:true,ticks:{callback:v=>gbpK(v)},grid,title:{display:true,text:'£ value',color:MUTED,font:{size:11,weight:'600'}}},
-        y2:{position:'right',beginAtZero:true,ticks:{callback:v=>num(v)},grid:{drawOnChartArea:false},title:{display:true,text:'Garments',color:MUTED,font:{size:11,weight:'600'}}}
-      },
-      plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw===null||c.raw===undefined?'—':c.dataset.yAxisID==='y2'?num(c.raw):gbp(c.raw))}}}}});
+  /* Value as bars (left axis) and garments as lines (right axis), Tibard vs Oliver Harvey */
+  const prodChart=(id,sym,valT,valO,unitT,unitO,valueTitle)=>{
+    const fmtV=sym==='$'?usd:gbp;
+    mkChart(id,{type:'bar',data:{labels,datasets:[
+      {label:'Tibard '+sym,data:win.map(valT),backgroundColor:TIB,borderRadius:3,yAxisID:'y',order:2},
+      {label:'Oliver Harvey '+sym,data:win.map(valO),backgroundColor:OH,borderRadius:3,yAxisID:'y',order:2},
+      {label:'Tibard garments',type:'line',data:win.map(unitT),borderColor:INK,backgroundColor:INK,yAxisID:'y2',order:1,...lineOpts},
+      {label:'Oliver Harvey garments',type:'line',data:win.map(unitO),borderColor:OH,backgroundColor:OH,borderDash:[5,4],yAxisID:'y2',order:1,...lineOpts}
+    ]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      scales:{x:{grid:{display:false}},
+        y:{position:'left',beginAtZero:true,ticks:{callback:v=>money(v,sym)},grid,title:axisTitle(valueTitle)},
+        y2:{position:'right',beginAtZero:true,ticks:{callback:v=>num(v)},grid:{drawOnChartArea:false},title:axisTitle('Garments')}},
+      plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw===null||c.raw===undefined?'—':c.dataset.yAxisID==='y2'?num(c.raw):fmtV(c.raw))}}}}});
   };
-  prodChart('chProdOff','Off-Shore Production £','Off-Shore Production Qty');
-  prodChart('chProdOn','On-Shore Production £','On-Shore Production Qty');
+  prodChart('chProdOff','$',d=>ckwUSD(d,'Tibard'),d=>ckwUSD(d,'OH'),d=>ckwUnits(d,'Tibard'),d=>ckwUnits(d,'OH'),'$ value');
+  prodChart('chProdOn','£',d=>get(d,'Tibard','Production','On-Shore Production £'),d=>get(d,'Oliver Harvey','Production','On-Shore Production £'),d=>unitsMade(d,'Tibard'),d=>unitsMade(d,'OH'),'£ value');
+
+  /* Works orders from the production planner: completed by brand (bars) and raised (line) */
+  mkChart('chWo',{type:'bar',data:{labels,datasets:[
+    {label:'Completed · Tibard',data:win.map(d=>woDone(d,'Tibard')),backgroundColor:TIB,stack:'w',borderRadius:3,order:2},
+    {label:'Completed · Oliver Harvey',data:win.map(d=>woDone(d,'OH')),backgroundColor:OH,stack:'w',borderRadius:3,order:2},
+    {label:'Raised',type:'line',data:win.map(woRaised),borderColor:INK,backgroundColor:INK,order:1,...lineOpts}
+  ]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,grid,ticks:{callback:v=>num(v)},title:axisTitle('Works orders')}},
+    plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw===null||c.raw===undefined?'—':num(c.raw))}}}}});
 
   /* Fabric — this year vs last year, Jan..Dec. Metres as bars (left), cost £ as lines (right).
      Months after the selected month are blanked for the current year. */
@@ -416,41 +643,67 @@ function renderCharts(sel){
   const ym=(y,i)=>y+'-'+String(i+1).padStart(2,'0');
   const fabSeries=(y,fn)=>MONTH_NAMES.map((_,i)=>(y===yr&&i+1>selM)?null:fn(ym(y,i)));
   document.getElementById('fabTitle').textContent=`Fabric cut — ${yr} vs ${py}`;
-  const ytd=(y,fn)=>{let s=null;for(let i=0;i<selM;i++){const v=fn(ym(y,i));if(v!==null)s=(s||0)+v;}return s;};
-  const yM=ytd(yr,fabM),pM=ytd(py,fabM),yC=ytd(yr,fabC),pC=ytd(py,fabC);
-  const firstWith=y=>{for(let i=0;i<selM;i++)if(fabM(ym(y,i))!==null)return i;return 0;};
+  const ytd=(y,fn)=>{let s=null;for(let i=0;i<selM;i++){const v=fn(ym(y,i));if(v!==null&&v!==undefined)s=(s||0)+v;}return s;};
+  const yM=ytd(yr,fabCutM),pM=ytd(py,fabCutM),yC=ytd(yr,fabCutGBP),pC=ytd(py,fabCutGBP);
+  const firstWith=y=>{for(let i=0;i<selM;i++)if(fabCutM(ym(y,i))!==null&&fabCutM(ym(y,i))!==undefined)return i;return 0;};
   const span=y=>`${MONTH_NAMES[firstWith(y)]}–${MONTH_NAMES[selM-1]} ${y}`;
   document.getElementById('fabMeta').textContent=
-    `${span(yr)}: ${yM!==null?num(yM)+' m · '+gbpK(yC):'—'}  |  ${span(py)}: ${pM!==null?num(pM)+' m · '+gbpK(pC):'—'}`;
+    `${span(yr)}: ${yM!==null?num(yM)+' m · '+money(yC):'—'}  |  ${span(py)}: ${pM!==null?num(pM)+' m · '+money(pC):'—'}`;
   mkChart('chFabric',{type:'bar',data:{labels:MONTH_NAMES,datasets:[
-    {label:`${py} metres`,data:fabSeries(py,fabM),backgroundColor:TIB2,borderRadius:3,yAxisID:'y',order:2},
-    {label:`${yr} metres`,data:fabSeries(yr,fabM),backgroundColor:TIB,borderRadius:3,yAxisID:'y',order:2},
-    {label:`${py} cost £`,type:'line',data:fabSeries(py,fabC),borderColor:MUTED,backgroundColor:MUTED,pointBackgroundColor:'#fff',pointBorderWidth:2,pointRadius:3.5,borderWidth:2,borderDash:[5,4],tension:.25,yAxisID:'y2',order:1},
-    {label:`${yr} cost £`,type:'line',data:fabSeries(yr,fabC),borderColor:INK,backgroundColor:INK,pointBackgroundColor:'#fff',pointBorderWidth:2,pointRadius:3.5,borderWidth:2,tension:.25,yAxisID:'y2',order:1}
+    {label:`${py} metres`,data:fabSeries(py,fabCutM),backgroundColor:TIB2,borderRadius:3,yAxisID:'y',order:2},
+    {label:`${yr} metres`,data:fabSeries(yr,fabCutM),backgroundColor:TIB,borderRadius:3,yAxisID:'y',order:2},
+    {label:`${py} cost £`,type:'line',data:fabSeries(py,fabCutGBP),borderColor:MUTED,backgroundColor:MUTED,borderDash:[5,4],yAxisID:'y2',order:1,...lineOpts,spanGaps:false},
+    {label:`${yr} cost £`,type:'line',data:fabSeries(yr,fabCutGBP),borderColor:INK,backgroundColor:INK,yAxisID:'y2',order:1,...lineOpts,spanGaps:false}
   ]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-    scales:{
-      x:{grid:{display:false}},
-      y:{position:'left',beginAtZero:true,ticks:{callback:v=>num(v)+' m'},grid,title:{display:true,text:'Metres cut',color:MUTED,font:{size:11,weight:'600'}}},
-      y2:{position:'right',beginAtZero:true,ticks:{callback:v=>gbpK(v)},grid:{drawOnChartArea:false},title:{display:true,text:'Cost of usage £',color:MUTED,font:{size:11,weight:'600'}}}
-    },
+    scales:{x:{grid:{display:false}},
+      y:{position:'left',beginAtZero:true,ticks:{callback:v=>num(v)+' m'},grid,title:axisTitle('Metres cut')},
+      y2:{position:'right',beginAtZero:true,ticks:{callback:v=>money(v)},grid:{drawOnChartArea:false},title:axisTitle('Cost of fabric cut £')}},
     plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw===null||c.raw===undefined?'—':c.dataset.yAxisID==='y2'?gbp(c.raw):num(c.raw)+' m')}}}}});
 
   mkChart('chStock',{type:'line',data:{labels,datasets:[
     {label:'Tibard',data:win.map(d=>get(d,'Tibard','Stock','Stock Valuation £')),borderColor:TIB,backgroundColor:TIB+'22',fill:true,tension:.25,pointRadius:3,borderWidth:2.5},
     {label:'Oliver Harvey',data:win.map(d=>get(d,'Oliver Harvey','Stock','Stock Valuation £')),borderColor:OH,backgroundColor:OH+'22',fill:true,tension:.25,pointRadius:3,borderWidth:2.5}
-  ]},options:{maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>gbpK(v)},grid},x:{grid:{display:false}}},plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw!==null?gbp(c.raw):'—')}}}}});
+  ]},options:{maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>money(v)},grid},x:{grid:{display:false}}},plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw!==null?gbp(c.raw):'—')}}}}});
 
   mkChart('chWh',{type:'bar',data:{labels,datasets:[
     {label:'Tibard orders',data:win.map(d=>get(d,'Tibard','Warehouse','Orders Despatched')),backgroundColor:TIB,stack:'o',borderRadius:3},
     {label:'OH orders',data:win.map(d=>get(d,'Oliver Harvey','Warehouse','Orders Despatched')),backgroundColor:OH,stack:'o',borderRadius:3},
-    {label:'DPD consignments',type:'line',data:win.map(d=>get(d,'Group','Warehouse','DPD Consignments')),borderColor:INK,backgroundColor:INK,pointBackgroundColor:'#fff',pointBorderWidth:2,tension:.25,pointRadius:3.5,borderWidth:2}
+    {label:'DPD consignments',type:'line',data:win.map(d=>get(d,'Group','Warehouse','DPD Consignments')),borderColor:INK,backgroundColor:INK,...lineOpts,spanGaps:false}
   ]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid,ticks:{callback:v=>num(v)}}},plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw!==null?num(c.raw):'—')}}}}});
 }
 
 function renderDetail(d){
   const pm=prevMonth(d),ya=yearAgo(d);
   const G=(b,a,m)=>dd=>get(dd,b,a,m);
+  const conts=dd=>{const c=ckwContainers(dd);return c.length?c.map(x=>x.ref+' ('+num(x.units)+')').join(', '):(ckwFeed(dd)?'none':null);};
+  const wipV=dd=>{const w=fabWip(dd);return w?w.value:null;}, wipM=dd=>{const w=fabWip(dd);return w?w.metres:null;};
+  const src=(dd,feed,name)=>feed(dd)?name:'sheet';
   const groups=[
+    ['On-shore production',[
+      ['Tibard on-shore £',G('Tibard','Production','On-Shore Production £'),'gbp'],
+      ['OH on-shore £',G('Oliver Harvey','Production','On-Shore Production £'),'gbp'],
+      ['Tibard garments made',dd=>unitsMade(dd,'Tibard'),'num',dd=>src(dd,m=>feedMonth(m,FEED_FROM.wo,'planner'),'planner')],
+      ['OH garments made',dd=>unitsMade(dd,'OH'),'num',dd=>src(dd,m=>feedMonth(m,FEED_FROM.wo,'planner'),'planner')]]],
+    ['Works orders (production planner)',[
+      ['Works orders raised',woRaised,'num'],
+      ['Works orders completed',dd=>woDone(dd),'num'],
+      ['Completed · Tibard',dd=>woDone(dd,'Tibard'),'num'],
+      ['Completed · OH',dd=>woDone(dd,'OH'),'num']]],
+    ['Clockwork stock bought in (USD)',[
+      ['Tibard $',dd=>ckwUSD(dd,'Tibard'),'usd'],
+      ['OH $',dd=>ckwUSD(dd,'OH'),'usd'],
+      ['Combined $ (pre-split)',dd=>ckwUSD(dd,'Group'),'usd'],
+      ['Containers booked in',conts,'txt'],
+      ['Units · Tibard',dd=>ckwUnits(dd,'Tibard'),'num',dd=>src(dd,ckwFeed,'stock planner')],
+      ['Units · OH',dd=>ckwUnits(dd,'OH'),'num',dd=>src(dd,ckwFeed,'stock planner')]]],
+    ['Fabric',[
+      ['Fabric cut (metres)',fabCutM,'m',dd=>src(dd,fabFeed,'cutting log')],
+      ['Fabric cut £',fabCutGBP,'gbp',dd=>src(dd,fabFeed,'cutting log')],
+      ['Average cost per metre',fabCutPerM,'gbp2'],
+      ['Fabric completed £ (written off)',fabDoneGBP,'gbp'],
+      ['Fabric completed (metres)',fabDoneM,'m'],
+      ['Fabric in WIP £ at month end',wipV,'gbp'],
+      ['Fabric in WIP (metres)',wipM,'m']]],
     ['Service',[
       ['Tibard OTIF',G('Tibard','Warehouse','OTIF %'),'pct'],
       ['Oliver Harvey OTIF',G('Oliver Harvey','Warehouse','OTIF %'),'pct'],
@@ -460,31 +713,16 @@ function renderDetail(d){
       ['OH late orders',G('Oliver Harvey','Warehouse','Late Orders'),'num'],
       ['DPD consignments',G('Group','Warehouse','DPD Consignments'),'num'],
       ['DPD cartons',G('Group','Warehouse','DPD Cartons'),'num']]],
-    ['Clockwork stock bought in (off-shore)',[
-      ['Tibard off-shore £',G('Tibard','Production','Off-Shore Production £'),'gbp'],
-      ['Tibard off-shore garments',G('Tibard','Production','Off-Shore Production Qty'),'num'],
-      ['OH off-shore £',G('Oliver Harvey','Production','Off-Shore Production £'),'gbp'],
-      ['OH off-shore garments',G('Oliver Harvey','Production','Off-Shore Production Qty'),'num'],
-      ['Combined off-shore £ (pre-split)',G('Group','Production','Off-Shore Production £'),'gbp']]],
-    ['On-shore production',[
-      ['Tibard on-shore £',G('Tibard','Production','On-Shore Production £'),'gbp'],
-      ['Tibard on-shore garments',G('Tibard','Production','On-Shore Production Qty'),'num'],
-      ['OH on-shore £',G('Oliver Harvey','Production','On-Shore Production £'),'gbp'],
-      ['OH on-shore garments',G('Oliver Harvey','Production','On-Shore Production Qty'),'num']]],
-    ['Fabric',[
-      ['Fabric cut (metres)',fabM,'m'],
-      ['Fabric cost of usage',fabC,'gbp'],
-      ['Average cost per metre',fabPerM,'gbp2']]],
     ['Stock',[
       ['Tibard stock valuation',G('Tibard','Stock','Stock Valuation £'),'gbp'],
       ['OH stock valuation',G('Oliver Harvey','Stock','Stock Valuation £'),'gbp']]],
   ];
-  const f=(v,t)=>v===null?'—':t==='pct'?pct(v):t==='gbp'?gbp(v):t==='gbp2'?gbp2(v):t==='m'?num(v)+' m':num(v);
+  const f=(v,t)=>v===null||v===undefined?'—':t==='txt'?v:t==='pct'?pct(v):t==='gbp'?gbp(v):t==='usd'?usd(v):t==='gbp2'?gbp2(v):t==='m'?num(v)+' m':num(v);
   const body=groups.map(([g,rows])=>{
-    const rs=rows.filter(([,fn])=>fn(d)!==null||fn(pm)!==null||fn(ya)!==null);
+    const rs=rows.filter(([,fn])=>[d,pm,ya].some(dd=>{const x=fn(dd);return x!==null&&x!==undefined;}));
     if(!rs.length)return '';
-    return `<tr class="grp"><td colspan="4">${g}</td></tr>`+rs.map(([lbl,fn,t])=>
-      `<tr><td>${lbl}</td><td class="num cur">${f(fn(d),t)}</td><td class="num">${f(fn(pm),t)}</td><td class="num">${f(fn(ya),t)}</td></tr>`).join('');
+    return `<tr class="grp"><td colspan="4">${g}</td></tr>`+rs.map(([lbl,fn,t,s])=>
+      `<tr><td>${lbl}${s?chip(s(d)):''}</td><td class="num cur">${f(fn(d),t)}</td><td class="num">${f(fn(pm),t)}</td><td class="num">${f(fn(ya),t)}</td></tr>`).join('');
   }).join('');
   document.getElementById('detail').innerHTML=
     `<thead><tr><th>Metric</th><th>${fmtMonth(d)}</th><th>${fmtMonth(pm)}</th><th>${fmtMonth(ya)} (LY)</th></tr></thead><tbody>${body}</tbody>`;
@@ -496,7 +734,7 @@ function render(){
   document.getElementById('dtMonth').textContent=fmtMonth(d);
   const win=windowFor(d);
   document.querySelectorAll('.range').forEach(el=>el.textContent=win.length>1?fmtMonth(win[0])+' – '+fmtMonth(win[win.length-1]):fmtMonth(d));
-  renderCards(d);renderCharts(d);renderDetail(d);
+  renderCards(d);renderCharts(d);renderDetail(d);feedBadge();
 }
 
 async function loadDashboard(url){
@@ -513,6 +751,8 @@ async function loadDashboard(url){
   sel.addEventListener('change',render);
   const badge=document.getElementById('srcBadge');badge.textContent='Live · Google Sheet';badge.classList.add('live');
   render();
+  // the planner feeds arrive after the first paint; the page re-renders when they do
+  loadFeeds().then(render).catch(e=>{FEED.loaded=true;FEED.status.all=String(e.message||e);render();});
 }
 
 const gate=document.getElementById('gate'),
