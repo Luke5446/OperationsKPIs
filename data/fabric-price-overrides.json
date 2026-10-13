@@ -1,0 +1,7 @@
+{
+"_about": "Fabric £ per metre for codes the production planner's cost list does not carry. 'exact' entries win over the planner's list; 'prefix' entries only fill gaps (any code starting with the prefix that has no price elsewhere).",
+"_updated": "2026-10-13",
+"exact": {"CMP-WEB-PU-25-03": 0.0642},
+"prefix": {"CMP-WEB-PU-25-": 0.0931},
+"_notes": {"CMP-WEB-PU-25-03": "black 25mm polyurethane webbing", "CMP-WEB-PU-25-": "all other colours of 25mm polyurethane webbing, e.g. -11 yellow, -15 navy"}
+}

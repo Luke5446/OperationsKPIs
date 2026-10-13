@@ -314,13 +314,15 @@ const FEEDS={
   cutlog:['https://luke5446.github.io/Tibard-Cutlog/cutlog.json','https://raw.githubusercontent.com/Luke5446/Tibard-Cutlog/main/cutlog.json'],
   stock:['https://luke5446.github.io/Tibard-Stock-Planner/data.json','https://raw.githubusercontent.com/Luke5446/Tibard-Stock-Planner/main/data.json'],
   plannerPage:['https://luke5446.github.io/Tibard-Productionplan/index.html','https://raw.githubusercontent.com/Luke5446/Tibard-Productionplan/main/index.html'],
-  prices:['data/fabric-prices.json']   // snapshot kept in this repo: the last resort for fabric £/m
+  prices:['data/fabric-prices.json'],   // snapshot kept in this repo: the last resort for fabric £/m
+  priceOverrides:['data/fabric-price-overrides.json'],   // £/m for codes the planner's list lacks (webbing)
+  ckwPrices:['data/clockwork-prices.json']   // Clockwork USD per garment, from the container order template
 };
 /* The first month each feed replaces the figure typed into the sheet */
 const FEED_FROM={wo:'2026-09', clockwork:'2026-09', fabric:'2026-10'};
 const CUTLOG_FROM='2026-09-29';   // the cutting log began; a works order due before it was never on the log
 const CKW_USD_METRICS=['Clockwork Stock Bought In USD','Off-Shore Production USD','Off-Shore Production £'];   // the sheet's figure was always typed in USD
-const FEED={planner:null, cutlog:null, stock:null, prices:{}, priceSrc:'', status:{}, loaded:false, savedAt:{}};
+const FEED={planner:null, cutlog:null, stock:null, prices:{}, overrides:{exact:{},prefix:{}}, ckwPrices:{}, priceSrc:'', status:{}, loaded:false, savedAt:{}};
 let FACTS={};
 
 const d2s=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -350,7 +352,9 @@ async function loadFeeds(){
     cutlog:fetchFirst(FEEDS.cutlog),
     stock:fetchFirst(FEEDS.stock),
     snapshot:fetchFirst(FEEDS.prices).then(j=>j&&j.prices?j.prices:j),
-    page:fetchFirst(FEEDS.plannerPage,false).then(pricesFromPage)
+    page:fetchFirst(FEEDS.plannerPage,false).then(pricesFromPage),
+    overrides:fetchFirst(FEEDS.priceOverrides),
+    ckwPrices:fetchFirst(FEEDS.ckwPrices).then(j=>j&&j.prices?j.prices:j)
   };
   const keys=Object.keys(jobs), results=await Promise.allSettled(keys.map(k=>jobs[k]));
   const got={};
@@ -366,6 +370,8 @@ async function loadFeeds(){
   const up=o=>{const t={};Object.keys(o||{}).forEach(k=>{const v=+o[k];if(v>0)t[k.trim().toUpperCase()]=v;});return t;};
   FEED.prices=Object.assign({},up(got.snapshot),up(got.page),up(FEED.planner&&FEED.planner.fabricPrices));
   FEED.priceSrc=FEED.planner&&FEED.planner.fabricPrices?'planner data':got.page?'planner page':got.snapshot?'snapshot':'none';
+  FEED.overrides={exact:up(got.overrides&&got.overrides.exact),prefix:up(got.overrides&&got.overrides.prefix)};
+  FEED.ckwPrices=up(got.ckwPrices);
   FEED.savedAt={planner:FEED.planner&&FEED.planner.savedAt,cutlog:FEED.cutlog&&FEED.cutlog.savedAt,stock:FEED.stock&&FEED.stock.savedAt};
   FEED.loaded=true;
   try{ computeFeedFacts(); }
@@ -391,7 +397,15 @@ const brandOf=(code,ref,company)=>{
   if(/^OH/i.test(code||'')||/^S-OH/i.test(ref||''))return 'OH';
   return 'Tibard';
 };
-const priceFor=code=>{const p=FEED.prices[(code||'').trim().toUpperCase()];return p>0?p:null;};
+/* £/m for a fabric: an exact override first, then the planner's list, then a prefix rule for codes the list lacks */
+const priceFor=code=>{
+  const c=(code||'').trim().toUpperCase(), o=FEED.overrides;
+  if(o.exact[c]>0)return o.exact[c];
+  const p=FEED.prices[c]; if(p>0)return p;
+  for(const k of Object.keys(o.prefix))if(c.startsWith(k))return o.prefix[k];
+  return null;
+};
+const ckwPriceFor=code=>{const p=FEED.ckwPrices[(code||'').trim().toUpperCase()];return p>0?p:null;};
 const cutMetres=e=>e.metres!=null?e.metres:(e.std!=null?e.std:0);
 
 function computeFeedFacts(){
@@ -399,7 +413,7 @@ function computeFeedFacts(){
   const F=m=>FACTS[m]||(FACTS[m]={
     wo:{done:new Set(),doneOH:new Set(),doneTib:new Set(),raised:new Set(),unitsOH:0,unitsTib:0,lines:0,refBrand:{}},
     fab:{cutM:0,cutGBP:0,cutLines:0,cutWOs:new Set(),cutUnpriced:0,doneM:0,doneGBP:0,doneUnpriced:0,wip:null},
-    ckw:{containers:[],units:0,unitsOH:0,unitsTib:0,usd:null}
+    ckw:{containers:[],units:0,unitsOH:0,unitsTib:0,usd:null,usdOH:0,usdTib:0,unpriced:[]}
   });
   const P=FEED.planner, C=FEED.cutlog, S=FEED.stock;
   const doneOn={};   // first completion of a works order line, as the planner dates it
@@ -462,9 +476,15 @@ function computeFeedFacts(){
     S.bookedPOs.forEach(b=>{
       const ref=(b.ref||'').trim(); if(!/^(C|AF)\d/i.test(ref))return;   // C = container, AF = airfreight; anything else is another supplier
       const date=b.bookedDate||b.date||''; if(!date)return;
-      const m=date.slice(0,7), g=F(m).ckw, c={ref,date,units:0,unitsOH:0,unitsTib:0,lines:(b.items||[]).length,usd:null};
-      (b.items||[]).forEach(it=>{const q=it.qty||0;c.units+=q;if(brandOf(it.code)==='OH')c.unitsOH+=q;else c.unitsTib+=q;});
-      const v=b.valueUSD!=null?b.valueUSD:(b.usd!=null?b.usd:null); if(v!=null){c.usd=+v;g.usd=(g.usd||0)+ +v;}   // if the stock planner ever carries a value
+      const m=date.slice(0,7), g=F(m).ckw, c={ref,date,units:0,unitsOH:0,unitsTib:0,lines:(b.items||[]).length,usd:null,usdOH:0,usdTib:0,unpriced:[]};
+      (b.items||[]).forEach(it=>{
+        const q=it.qty||0, oh=brandOf(it.code)==='OH', p=ckwPriceFor(it.code);
+        c.units+=q; if(oh)c.unitsOH+=q; else c.unitsTib+=q;
+        if(p!=null){c.usd=(c.usd||0)+q*p; if(oh)c.usdOH+=q*p; else c.usdTib+=q*p;} else if(q) c.unpriced.push(it.code);
+      });
+      const v=b.valueUSD!=null?b.valueUSD:(b.usd!=null?b.usd:null); if(v!=null){c.usd=+v;}   // a value typed on the stock planner would win
+      if(c.usd!=null){g.usd=(g.usd||0)+c.usd; g.usdOH+=c.usdOH; g.usdTib+=c.usdTib;}
+      g.unpriced=g.unpriced.concat(c.unpriced);
       g.containers.push(c); g.units+=c.units; g.unitsOH+=c.unitsOH; g.unitsTib+=c.unitsTib;
     });
   }
@@ -485,9 +505,12 @@ function fabCutPerM(m){ const a=fabCutM(m),c=fabCutGBP(m); return a&&c!==null?c/
 function fabDoneGBP(m){ if(!(fabFeed(m)&&hasFeed('planner')))return null; const f=fx(m); return f?f.fab.doneGBP:0; }
 function fabDoneM(m){ if(!(fabFeed(m)&&hasFeed('planner')))return null; const f=fx(m); return f?f.fab.doneM:0; }
 function fabWip(m){ if(!(fabFeed(m)&&hasFeed('planner')))return null; const f=fx(m); return f&&f.fab.wip?f.fab.wip:null; }
-function ckwUSD(m,b){ for(const met of CKW_USD_METRICS){const v=get(m,brandName(b),'Production',met);if(v!==null)return v;} return null; }
-function ckwUSDTotal(m){ if(feedMonth(m,FEED_FROM.clockwork,'stock')){const f=fx(m);if(f&&f.ckw.usd!==null)return f.ckw.usd;} let s=null;['Tibard','OH','Group'].forEach(b=>{const v=ckwUSD(m,b);if(v!==null)s=(s||0)+v;});return s; }
 const ckwFeed=m=>feedMonth(m,FEED_FROM.clockwork,'stock');
+const ckwValued=m=>ckwFeed(m)&&Object.keys(FEED.ckwPrices).length>0;   // containers can be valued: the price list is loaded
+function ckwSheetUSD(m,b){ for(const met of CKW_USD_METRICS){const v=get(m,brandName(b),'Production',met);if(v!==null)return v;} return null; }
+function ckwUSD(m,b){ if(ckwValued(m)){const f=fx(m); if(b==='Group')return null; return f&&f.ckw.usd!==null?(b==='OH'?f.ckw.usdOH:f.ckw.usdTib):0;} return ckwSheetUSD(m,b); }
+function ckwUSDTotal(m){ if(ckwValued(m)){const f=fx(m);return f&&f.ckw.usd!==null?f.ckw.usd:0;} let s=null;['Tibard','OH','Group'].forEach(b=>{const v=ckwSheetUSD(m,b);if(v!==null)s=(s||0)+v;});return s; }
+function ckwUnpriced(m){ if(!ckwValued(m))return []; const f=fx(m); return f?f.ckw.unpriced:[]; }
 function ckwUnits(m,b){ if(ckwFeed(m)){const f=fx(m);return f?(b==='OH'?f.ckw.unitsOH:b==='Tibard'?f.ckw.unitsTib:f.ckw.units):0;} if(b==='all'){return sum(m,['Tibard','Oliver Harvey','Group'],'Production','Off-Shore Production Qty');} return get(m,brandName(b),'Production','Off-Shore Production Qty'); }
 function ckwContainers(m){ if(!ckwFeed(m))return []; const f=fx(m); return f?f.ckw.containers:[]; }
 
@@ -531,10 +554,11 @@ function renderCards(d){
 
   // 3 Clockwork stock bought in: USD typed in the sheet; containers and units from the stock planner from Sep 2026
   const ck=ckwUSDTotal(d), conts=ckwContainers(d), cu=ckwUnits(d,'all');
-  cards.push({label:'Clockwork Stock Bought In',chip:fx(d)&&fx(d).ckw.usd!==null?'stock planner':'',value:v(ck,usdK),sub:'USD · by container booked-in month',
+  const ckUnp=ckwUnpriced(d);
+  cards.push({label:'Clockwork Stock Bought In',chip:ckwValued(d)?'stock planner':'',value:v(ck,usdK),sub:'USD · by container booked-in month'+(isCur&&ckwValued(d)?' · to date':''),
     deltas:deltaHTML(ck,ckwUSDTotal(pm),pmL)+deltaHTML(ck,ckwUSDTotal(ya),'vs LY'),
     split:brandSplit(ckwUSD(d,'Tibard'),ckwUSD(d,'OH'),usdK),
-    split2:ckwFeed(d)?`<span>${conts.length?conts.map(c=>c.ref).join(', '):'No containers booked in'}${cu?' · <b>'+num(cu)+'</b> units':''}${chip('stock planner')}</span>`
+    split2:ckwFeed(d)?`<span>${conts.length?conts.map(c=>c.ref).join(', '):'No containers booked in'}${cu?' · <b>'+num(cu)+'</b> units':''}${ckwValued(d)?'':chip('stock planner')}</span>`+(ckUnp.length?`<span class="note">${ckUnp.length} code${ckUnp.length>1?'s':''} with no USD price: ${ckUnp.slice(0,3).join(', ')}${ckUnp.length>3?'…':''}</span>`:'')
                      :`<span>Units ${dotO}OH <b>${v(ckwUnits(d,'OH'),num)}</b> · ${dotT}Tibard <b>${v(ckwUnits(d,'Tibard'),num)}</b></span>`});
 
   // 4 Stock valuation (lower = good)
@@ -690,9 +714,10 @@ function renderDetail(d){
       ['Completed · Tibard',dd=>woDone(dd,'Tibard'),'num'],
       ['Completed · OH',dd=>woDone(dd,'OH'),'num']]],
     ['Clockwork stock bought in (USD)',[
-      ['Tibard $',dd=>ckwUSD(dd,'Tibard'),'usd'],
-      ['OH $',dd=>ckwUSD(dd,'OH'),'usd'],
+      ['Tibard $',dd=>ckwUSD(dd,'Tibard'),'usd',dd=>src(dd,ckwValued,'stock planner')],
+      ['OH $',dd=>ckwUSD(dd,'OH'),'usd',dd=>src(dd,ckwValued,'stock planner')],
       ['Combined $ (pre-split)',dd=>ckwUSD(dd,'Group'),'usd'],
+      ['Codes with no USD price',dd=>{const u=ckwUnpriced(dd);return u.length?u.join(', '):null;},'txt'],
       ['Containers booked in',conts,'txt'],
       ['Units · Tibard',dd=>ckwUnits(dd,'Tibard'),'num',dd=>src(dd,ckwFeed,'stock planner')],
       ['Units · OH',dd=>ckwUnits(dd,'OH'),'num',dd=>src(dd,ckwFeed,'stock planner')]]],
