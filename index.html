@@ -368,7 +368,8 @@ async function loadFeeds(){
   FEED.priceSrc=FEED.planner&&FEED.planner.fabricPrices?'planner data':got.page?'planner page':got.snapshot?'snapshot':'none';
   FEED.savedAt={planner:FEED.planner&&FEED.planner.savedAt,cutlog:FEED.cutlog&&FEED.cutlog.savedAt,stock:FEED.stock&&FEED.stock.savedAt};
   FEED.loaded=true;
-  computeFeedFacts();
+  try{ computeFeedFacts(); }
+  catch(e){ FACTS={}; FEED.planner=FEED.cutlog=FEED.stock=null; FEED.status.compute=String(e.message||e); }
   refreshMonths();
 }
 /* The month list is the sheet's months plus any month a planner feed covers (from its cutover), up to this month */
@@ -396,7 +397,7 @@ const cutMetres=e=>e.metres!=null?e.metres:(e.std!=null?e.std:0);
 function computeFeedFacts(){
   FACTS={};
   const F=m=>FACTS[m]||(FACTS[m]={
-    wo:{done:new Set(),doneOH:new Set(),doneTib:new Set(),raised:new Set(),unitsOH:0,unitsTib:0,lines:0},
+    wo:{done:new Set(),doneOH:new Set(),doneTib:new Set(),raised:new Set(),unitsOH:0,unitsTib:0,lines:0,refBrand:{}},
     fab:{cutM:0,cutGBP:0,cutLines:0,cutWOs:new Set(),cutUnpriced:0,doneM:0,doneGBP:0,doneUnpriced:0,wip:null},
     ckw:{containers:[],units:0,unitsOH:0,unitsTib:0,usd:null}
   });
@@ -407,7 +408,9 @@ function computeFeedFacts(){
       if(!c.completed)return;
       const m=c.completed.slice(0,7), f=F(m).wo, b=brandOf(c.code,c.ref,c.company);
       f.done.add(c.ref); f.lines++;
-      if(b==='OH'){f.doneOH.add(c.ref);f.unitsOH+=c.qty||0;}else{f.doneTib.add(c.ref);f.unitsTib+=c.qty||0;}
+      if(b==='OH')f.unitsOH+=c.qty||0; else f.unitsTib+=c.qty||0;
+      // a works order with lines of both brands counts once, under the brand of most of its garments
+      const rb=f.refBrand[c.ref]||(f.refBrand[c.ref]={OH:0,Tibard:0}); rb[b]+=(c.qty||0)||1e-9;
       const k=c.ref+'|'+c.code; if(!doneOn[k])doneOn[k]=c.completed;
       // fabric written off on completion: the cutting room's metres where typed, else the standard,
       // at the price frozen on the record (the planner's own ledger line)
@@ -420,7 +423,8 @@ function computeFeedFacts(){
       }
     });
     const seen=new Set();
-    (P.WOs||[]).concat(P.completedWOs).forEach(w=>{ if(!w.createdAt||seen.has(w.ref))return; seen.add(w.ref); F(w.createdAt.slice(0,7)).wo.raised.add(w.ref); });
+    (P.WOs||[]).concat(P.completedWOs).forEach(w=>{ const raised=w.createdAt||w.start||w.printedAt; if(!raised||seen.has(w.ref))return; seen.add(w.ref); F(raised.slice(0,7)).wo.raised.add(w.ref); });
+    Object.keys(FACTS).forEach(m=>{const f=FACTS[m].wo; Object.keys(f.refBrand).forEach(r=>{const rb=f.refBrand[r]; (rb.OH>rb.Tibard?f.doneOH:f.doneTib).add(r);});});
   }
   if(C){
     C.entries.forEach(e=>{
@@ -438,7 +442,7 @@ function computeFeedFacts(){
           if(e.cancelledAt){
             // printed before the log began and withdrawn as "cut before there was a list": while the works
             // order is still live its cloth is in WIP at the standard metres, as the planner takes it
-            if(live[e.ref]&&(e.printedAt||'')<=asAt&&!liveKeys.has(e.k)&&e.std!=null){const pr=priceFor(e.fabric);w.assumedLines++;if(pr!=null)w.assumedValue+=e.std*pr;else w.unpriced++;}
+            if(live[e.ref]&&(e.printedAt||'')<=asAt&&!liveKeys.has(e.k)&&e.std!=null){const pr=priceFor(e.fabric);w.assumedLines++;w.lines++;w.metres+=e.std;if(pr!=null)w.assumedValue+=e.std*pr;else w.unpriced++;}
             return;
           }
           if(!e.cutAt||e.cutAt>asAt)return;            // not cut yet: still on the roll
@@ -495,7 +499,7 @@ function feedBadge(){
   if(FEED.cutlog)parts.push('Cut log '+fmtStamp(FEED.savedAt.cutlog)); else bad.push('cutting log');
   if(FEED.stock)parts.push('Stock plan '+fmtStamp(FEED.savedAt.stock)); else bad.push('stock planner');
   el.className='src-badge '+(bad.length?'warn':'live');
-  el.textContent=bad.length?('⚠ '+bad.join(', ')+' unavailable · sheet figures shown'+(parts.length?' · '+parts.join(' · '):'')):parts.join(' · ');
+  el.textContent=bad.length?('⚠ '+bad.join(', ')+' unavailable · sheet figures shown'+(parts.length?' · '+parts.join(' · '):'')+(FEED.status.compute?' · '+FEED.status.compute:'')):parts.join(' · ');
   el.title='Fabric £/m from: '+FEED.priceSrc;
 }
 
@@ -527,10 +531,10 @@ function renderCards(d){
 
   // 3 Clockwork stock bought in: USD typed in the sheet; containers and units from the stock planner from Sep 2026
   const ck=ckwUSDTotal(d), conts=ckwContainers(d), cu=ckwUnits(d,'all');
-  cards.push({label:'Clockwork Stock Bought In',chip:ckwFeed(d)?'stock planner':'',value:v(ck,usdK),sub:'USD · by container booked-in month',
+  cards.push({label:'Clockwork Stock Bought In',chip:fx(d)&&fx(d).ckw.usd!==null?'stock planner':'',value:v(ck,usdK),sub:'USD · by container booked-in month',
     deltas:deltaHTML(ck,ckwUSDTotal(pm),pmL)+deltaHTML(ck,ckwUSDTotal(ya),'vs LY'),
     split:brandSplit(ckwUSD(d,'Tibard'),ckwUSD(d,'OH'),usdK),
-    split2:ckwFeed(d)?`<span>${conts.length?conts.map(c=>c.ref).join(', '):'No containers booked in'}${cu?' · <b>'+num(cu)+'</b> units':''}</span>`
+    split2:ckwFeed(d)?`<span>${conts.length?conts.map(c=>c.ref).join(', '):'No containers booked in'}${cu?' · <b>'+num(cu)+'</b> units':''}${chip('stock planner')}</span>`
                      :`<span>Units ${dotO}OH <b>${v(ckwUnits(d,'OH'),num)}</b> · ${dotT}Tibard <b>${v(ckwUnits(d,'Tibard'),num)}</b></span>`});
 
   // 4 Stock valuation (lower = good)

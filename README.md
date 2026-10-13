@@ -33,8 +33,10 @@ copy first and `raw.githubusercontent.com` as a fallback. No token is needed.
 
 - **Brand** of a garment: a special make uses its Sage company; otherwise a product code starting
   `OH` is Oliver Harvey and everything else (Tibard codes and customer-branded codes) is Tibard.
-- **Works orders completed** = distinct works order refs with a completion in the month.
-  **Raised** = distinct refs with a `createdAt` in the month.
+- **Works orders completed** = distinct works order refs with a completion in the month; a works
+  order with lines of both brands counts once, under the brand of most of its garments.
+  **Raised** = distinct refs by the day they entered the planner (`createdAt`, stamped from 7 Sep 2026;
+  before that the planned start date, then the print date).
 - **Fabric cut** = cut-log lines marked cut in the month (the cutting room's metres where typed,
   else the standard) × the planner's price per metre.
 - **Fabric completed** = the planner's own write-off: on every line completed in the month, the
