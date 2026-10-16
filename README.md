@@ -49,7 +49,8 @@ copy first and `raw.githubusercontent.com` as a fallback. No token is needed.
 - **Fabric in WIP** as at a day = lines marked cut on or before that day whose works order was not
   completed by then, valued the same way; plus, while they are still live, works orders printed
   before the log began, taken as cut at standard — as the planner's KPIs tab does. A count of works
-  orders the log never had is shown when any exist.
+  orders the log never had is shown when any exist; a works order split off one that is on the log is
+  not counted, as its cloth was cut with the parent.
 - **Month end = the last working day** (Monday to Friday, England's bank holidays excluded). The
   month in progress shows figures to date; a closed month shows them as at its last working day.
 
