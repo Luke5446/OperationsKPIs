@@ -346,17 +346,20 @@ const brandName=b=>b==='OH'?'Oliver Harvey':b==='Tibard'?'Tibard':'Group';
 function unitsMade(m,b){ if(feedMonth(m,FEED_FROM.wo,'planner')){const f=fx(m);return f?(b==='OH'?f.wo.unitsOH:f.wo.unitsTib):0;} return get(m,brandName(b),'Production','On-Shore Production Qty'); }
 function woDone(m,b){ if(!feedMonth(m,FEED_FROM.wo,'planner'))return null; const f=fx(m); if(!f)return 0; return b==='OH'?f.wo.doneOH.size:b==='Tibard'?f.wo.doneTib.size:f.wo.done.size; }
 function woRaised(m){ if(!feedMonth(m,FEED_FROM.wo,'planner'))return null; const f=fx(m); return f?f.wo.raised.size:0; }
-const fabFeed=m=>feedMonth(m,FEED_FROM.fabric,'cutlog');
+const fabFrozen=m=>{const f=fx(m);return !!(f&&f.fab.frozen);};
+const fabFeed=m=>FEED.loaded&&m>=FEED_FROM.fabric&&(!!FEED.cutlog||fabFrozen(m));   // a frozen month stands even when the log is down
 function fabCutM(m){ if(fabFeed(m)){const f=fx(m);return f?f.fab.cutM:0;} return fabM(m); }
 function fabCutGBP(m){ if(fabFeed(m)){const f=fx(m);return f?f.fab.cutGBP:0;} return fabC(m); }
 function fabCutPerM(m){ const a=fabCutM(m),c=fabCutGBP(m); return a&&c!==null?c/a:null; }
-function fabDoneGBP(m){ if(!(fabFeed(m)&&hasFeed('planner')))return null; const f=fx(m); return f?f.fab.doneGBP:0; }
-function fabDoneM(m){ if(!(fabFeed(m)&&hasFeed('planner')))return null; const f=fx(m); return f?f.fab.doneM:0; }
-function fabWip(m){ if(!(fabFeed(m)&&hasFeed('planner')))return null; const f=fx(m); return f&&f.fab.wip?f.fab.wip:null; }
+const fabFull=m=>fabFeed(m)&&(hasFeed('planner')||fabFrozen(m));   // completed £ and WIP need the planner too, unless frozen
+function fabDoneGBP(m){ if(!fabFull(m))return null; const f=fx(m); return f?f.fab.doneGBP:0; }
+function fabDoneM(m){ if(!fabFull(m))return null; const f=fx(m); return f?f.fab.doneM:0; }
+function fabWip(m){ if(!fabFull(m))return null; const f=fx(m); return f&&f.fab.wip?f.fab.wip:null; }
 /* How a month's fabric figures stand: frozen on its last working day, as at that day but not yet frozen, or to date */
-function fabState(m){ if(!fabFeed(m))return null; const f=fx(m); if(!f||!f.fab.asAt)return null; const g=f.fab; return {asAt:g.asAt,closed:!!g.closed,frozen:g.frozen,lastWorkingDay:g.lastWorkingDay}; }
+function fabState(m){ if(!fabFeed(m))return null; const f=fx(m); if(!f||!f.fab.asAt)return null; const g=f.fab; return {asAt:g.asAt,closed:!!g.closed,frozen:g.frozen,final:!!g.final,finalOn:g.finalOn,revisedAt:g.revisedAt,lastWorkingDay:g.lastWorkingDay}; }
+const fabChip=m=>{const f=fabState(m);return !f?'':f.frozen?(f.final?'frozen':'closing'):'cutting log';};
 const ckwFeed=m=>feedMonth(m,FEED_FROM.clockwork,'stock');
-const ckwValued=m=>ckwFeed(m)&&Object.keys(FEED.ckwPrices).length>0;   // containers can be valued: the price list is loaded
+const ckwValued=m=>ckwFeed(m)&&(Object.keys(FEED.ckwPrices).length>0||!!(fx(m)&&fx(m).ckw.usd!==null));   // containers can be valued: the price list is loaded, or the stock planner carries the value
 function ckwSheetUSD(m,b){ for(const met of CKW_USD_METRICS){const v=get(m,brandName(b),'Production',met);if(v!==null)return v;} return null; }
 function ckwUSD(m,b){ if(ckwValued(m)){const f=fx(m); if(b==='Group')return null; return f&&f.ckw.usd!==null?(b==='OH'?f.ckw.usdOH:f.ckw.usdTib):0;} return ckwSheetUSD(m,b); }
 function ckwUSDTotal(m){ if(ckwValued(m)){const f=fx(m);return f&&f.ckw.usd!==null?f.ckw.usd:0;} let s=null;['Tibard','OH','Group'].forEach(b=>{const v=ckwSheetUSD(m,b);if(v!==null)s=(s||0)+v;});return s; }
@@ -419,10 +422,10 @@ function renderCards(d){
 
   // 5 Fabric: value cut in the month, what was completed (written off) and what is left in WIP at month end
   const fc=fabCutGBP(d), fm=fabCutM(d), fpm=fabCutPerM(d), fd=fabDoneGBP(d), w=fabWip(d), fs=fabState(d);
-  const fabWhen=fs?(fs.closed?(fs.frozen?'frozen '+fmtDay(fs.asAt):'as at '+fmtDay(fs.asAt)+', not yet frozen'):'to date'):'';
+  const fabWhen=fs?(fs.closed?(fs.frozen?(fs.final?'frozen '+fmtDay(fs.asAt):'as at '+fmtDay(fs.asAt)+' · settling until '+fmtDay(fs.finalOn)):'as at '+fmtDay(fs.asAt)+', not yet frozen'):'to date'):'';
   const cutUnp=fabFeed(d)&&fx(d)?fx(d).fab.cutUnpriced:0;
   const wipNote=[(cutUnp?cutUnp+' cut line'+(cutUnp>1?'s':'')+' with no price':''),(w&&w.unpriced?w.unpriced+' WIP line'+(w.unpriced>1?'s':'')+' with no price':''),(w&&w.notValued?w.notValued+' works order'+(w.notValued>1?'s':'')+' not on the cutting log':'')].filter(Boolean).join(' · ');
-  cards.push({label:'Fabric Cut',chip:fabFeed(d)?(fs&&fs.frozen?'frozen':'cutting log'):'',go:'pFab',value:v(fc,money),sub:fm!==null?num(fm)+' m'+(fpm!==null?' · '+gbp2(fpm)+'/m':'')+(fabWhen?' · '+fabWhen:''):'',
+  cards.push({label:'Fabric Cut',chip:fabChip(d),go:'pFab',value:v(fc,money),sub:fm!==null?num(fm)+' m'+(fpm!==null?' · '+gbp2(fpm)+'/m':'')+(fabWhen?' · '+fabWhen:''):'',
     deltas:deltaHTML(fc,fabCutGBP(pm),pmL)+deltaHTML(fc,fabCutGBP(ya),'vs LY'),
     split:`<span>Completed <b>${v(fd,money)}</b></span><span>WIP${fs?(fs.closed?' at '+fmtDay(fs.asAt):' today'):' month end'} <b>${w?(w.unpriced?'≥ ':'')+money(w.value):'—'}</b></span>`,
     split2:wipNote?`<span class="note">${wipNote}</span>`:''});
@@ -578,12 +581,12 @@ function renderDetail(d){
       ['Units · Tibard',dd=>ckwUnits(dd,'Tibard'),'num',dd=>src(dd,ckwFeed,'stock planner')],
       ['Units · OH',dd=>ckwUnits(dd,'OH'),'num',dd=>src(dd,ckwFeed,'stock planner')]]],
     ['Fabric',[
-      ['Fabric cut (metres)',fabCutM,'m',dd=>{const f=fabState(dd);return f&&f.frozen?'frozen':src(dd,fabFeed,'cutting log');}],
-      ['Fabric cut £',fabCutGBP,'gbp',dd=>{const f=fabState(dd);return f&&f.frozen?'frozen':src(dd,fabFeed,'cutting log');}],
+      ['Fabric cut (metres)',fabCutM,'m',dd=>fabChip(dd)||'sheet'],
+      ['Fabric cut £',fabCutGBP,'gbp',dd=>fabChip(dd)||'sheet'],
       ['Average cost per metre',fabCutPerM,'gbp2'],
       ['Fabric completed £ (written off)',fabDoneGBP,'gbp'],
       ['Fabric completed (metres)',fabDoneM,'m'],
-      ['Fabric in WIP £ (at the last working day; today for the open month)',wipV,'gbp',dd=>{const f=fabState(dd);return f&&f.frozen?'frozen':null;}],
+      ['Fabric in WIP £ (at the last working day; today for the open month)',wipV,'gbp',dd=>{const c=fabChip(dd);return c&&c!=='cutting log'?c:null;}],
       ['Fabric in WIP (metres)',wipM,'m']]],
     ['Service',[
       ['Tibard OTIF',G('Tibard','Warehouse','OTIF %'),'pct'],

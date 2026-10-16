@@ -12,7 +12,7 @@ Google Sheet URL it reads is encrypted in the page and only decrypts with the pa
 | Fabric cut (metres and £), fabric completed £, fabric in WIP, each month as at its **last working day** and frozen there | **Cutting log** `cutlog.json` + production planner; `data/fabric-snapshots.json` once frozen | Oct 2026 |
 | Fabric cut before Oct 2026 | KPI Data sheet rows `Fabric Cut Metres` / `Fabric Cost of Usage £` | Apr 2025 – Sep 2026 |
 | Clockwork stock bought in, USD, before Sep 2026 | KPI Data sheet (typed; the metric `Off-Shore Production £` was always entered in USD) | — |
-| Clockwork stock bought in, USD, containers and units | **Stock planner** `data.json`, `bookedPOs` whose ref starts `C` (container) or `AF` (airfreight), by booked-in date, each garment valued at `data/clockwork-prices.json` (USD per garment from the Container Order Template's Data tab) | Sep 2026 |
+| Clockwork stock bought in, USD, containers and units | **Stock planner** `data.json`, `bookedPOs` whose ref starts `C` (container) or `AF` (airfreight), by booked-in date. A `valueUSD` put on the container in the stock planner wins; otherwise each garment is valued at `data/clockwork-prices.json` (USD per garment from the Container Order Template's Data tab) | Sep 2026 |
 
 The cutover months are in `FEED_FROM` near the top of the script. Before a cutover, and whenever a
 feed cannot be fetched, the sheet figure is shown and the header badge says which feed is down.
@@ -59,9 +59,16 @@ copy first and `raw.githubusercontent.com` as a fallback. No token is needed.
 `tools/snapshot-fabric.js` runs every weekday at 10:30 UTC through the `Freeze month-end fabric KPIs`
 workflow (`.github/workflows/fabric-snapshot.yml`). The first run after a month's last working day
 works out that month's fabric cut, completed and WIP as at that day and commits them to
-`data/fabric-snapshots.json`; the dashboard then shows those figures for good (the tile says
-"frozen") however the feeds change afterwards. To redo a month, run the workflow by hand with the
-month in its box, or locally: `node tools/snapshot-fabric.js 2026-10`.
+`data/fabric-snapshots.json`. For the next five working days the month is **settling** (the tile says
+"closing"): each run re-takes it, so a cut marked late with its date put back, or a completion booked
+on the real day, still lands in the month. After that it is **final** (the tile says "frozen") and the
+dashboard shows the stored figures for good, however the feeds change. A mark recorded after its
+month was made final is counted in the month it was recorded in, so nothing is lost. To redo a month,
+run the workflow by hand with the month in its box, or locally: `node tools/snapshot-fabric.js 2026-10`
+(a month still open is refused). A frozen month still shows when a feed is down.
+
+A cut or completion dated on a month-end weekend (after the last working day) belongs to the next
+month, so every line is in exactly one month.
 
 The feed maths lives in `kpi-feeds.js`, used by both the page and the freeze job, so the two cannot
 disagree.
