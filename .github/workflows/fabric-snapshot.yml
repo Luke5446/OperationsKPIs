@@ -1,0 +1,34 @@
+# Freezes each month's fabric KPIs (cut, completed, WIP) as at its last working day.
+# Runs every weekday morning after the planner's usual publish; the first run after a month's
+# last working day writes that month into data/fabric-snapshots.json and commits it.
+name: Freeze month-end fabric KPIs
+on:
+  schedule:
+    - cron: '30 10 * * 1-5'   # 10:30 UTC, Monday to Friday
+  workflow_dispatch:
+    inputs:
+      month:
+        description: 'Re-freeze this month (YYYY-MM), leave blank to run normally'
+        required: false
+        default: ''
+permissions:
+  contents: write
+concurrency: fabric-snapshot
+jobs:
+  freeze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Work out the month-end figures
+        run: node tools/snapshot-fabric.js ${{ github.event.inputs.month }}
+      - name: Commit the snapshot if it changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/fabric-snapshots.json
+          if git diff --cached --quiet; then echo "No change"; exit 0; fi
+          git commit -m "Freeze month-end fabric KPIs ($(date -u +%Y-%m-%d))"
+          git push

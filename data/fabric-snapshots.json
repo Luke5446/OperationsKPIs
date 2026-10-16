@@ -1,0 +1,4 @@
+{
+"_about": "Fabric KPIs frozen at each month's last working day by tools/snapshot-fabric.js (run by the fabric-snapshot workflow). The dashboard shows these for closed months instead of recomputing from the feeds.",
+"months": {}
+}
