@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tibard &amp; Oliver Harvey — Operations KPIs</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="kpi-feeds.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -70,6 +71,10 @@ main{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
 .card{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--chambray);border-radius:10px;padding:14px 16px 12px;display:flex;flex-direction:column;gap:8px;transition:transform .12s ease,box-shadow .12s ease}
 .card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.card{cursor:pointer;scroll-margin-top:16px}
+.card:focus-visible{outline:3px solid var(--chambray);outline-offset:2px}
+.panel{scroll-margin-top:16px;transition:box-shadow .35s ease}
+.panel.flash{box-shadow:0 0 0 3px var(--chambray),var(--shadow)}
 .card.warn{border-top-color:var(--brand-red)}
 .card .k-label{font-size:.68rem;line-height:1.15;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;flex-wrap:wrap}
 .card .k-sub{font-size:.74rem;color:var(--muted);margin-top:-4px}
@@ -166,23 +171,23 @@ footer{max-width:1180px;margin:0 auto;padding:0 18px 40px;font-size:.78rem;color
 
   <div class="section-title"><h2>Production</h2><span class="hint"><span class="range"></span> · value (bars) and garments (lines)</span></div>
   <div class="charts">
-    <div class="panel wide tall">
+    <div class="panel wide tall" id="pOn">
       <div class="panel-head"><h3>On-shore production</h3><span class="meta">£ value from the sheet · garments made from the production planner from Sep 2026</span></div>
       <div class="chart-wrap"><canvas id="chProdOn"></canvas></div>
     </div>
-    <div class="panel wide tall">
+    <div class="panel wide tall" id="pWo">
       <div class="panel-head"><h3>Works orders raised and completed</h3><span class="meta">Production planner · from Sep 2026</span></div>
       <div class="chart-wrap"><canvas id="chWo"></canvas></div>
     </div>
-    <div class="panel wide tall">
+    <div class="panel wide tall" id="pCkw">
       <div class="panel-head"><h3>Clockwork stock bought in</h3><span class="meta">USD from the sheet · containers and units from the stock planner from Sep 2026 · by booked-in month</span></div>
       <div class="chart-wrap"><canvas id="chProdOff"></canvas></div>
     </div>
   </div>
 
-  <div class="section-title"><h2>Fabric</h2><span class="hint">Cutting room · metres cut (bars) and £ of fabric cut (lines), year on year · from the cutting log from Oct 2026</span></div>
+  <div class="section-title"><h2>Fabric</h2><span class="hint">Cutting room · metres cut (bars) and £ of fabric cut (lines), year on year · from the cutting log from Oct 2026, each month frozen at its last working day</span></div>
   <div class="charts">
-    <div class="panel wide tall">
+    <div class="panel wide tall" id="pFab">
       <div class="panel-head"><h3 id="fabTitle">Fabric cut</h3><span class="meta" id="fabMeta"></span></div>
       <div class="chart-wrap"><canvas id="chFabric"></canvas></div>
     </div>
@@ -190,15 +195,15 @@ footer{max-width:1180px;margin:0 auto;padding:0 18px 40px;font-size:.78rem;color
 
   <div class="section-title"><h2>Service &amp; stock</h2><span class="hint range"></span></div>
   <div class="charts">
-    <div class="panel">
+    <div class="panel" id="pOtif">
       <div class="panel-head"><h3>On-time in full (OTIF)</h3><span class="meta">Target 95%</span></div>
       <div class="chart-wrap"><canvas id="chOtif"></canvas></div>
     </div>
-    <div class="panel">
+    <div class="panel" id="pWh">
       <div class="panel-head"><h3>Warehouse despatch volumes</h3><span class="meta">Orders &amp; DPD consignments</span></div>
       <div class="chart-wrap"><canvas id="chWh"></canvas></div>
     </div>
-    <div class="panel wide">
+    <div class="panel wide" id="pStock">
       <div class="panel-head"><h3>Stock valuation</h3><span class="meta">£ by brand</span></div>
       <div class="chart-wrap"><canvas id="chStock"></canvas></div>
     </div>
@@ -305,76 +310,19 @@ function deltaHTML(cur,ref,label,{pctPoints=false,invert=false}={}){
   return `<span class="delta ${cls}"><span class="arr">${arrow}</span>${txt} ${label}</span>`;
 }
 
-/* ================ live feeds: production planner, cutting log, stock planner ================
-   The planner apps publish their state as JSON into public GitHub repos. GitHub Pages serves each
-   file (a minute or so behind the editor's publish); raw.githubusercontent.com is the fallback.
-   Nothing here needs a token. The sheet stays the source for everything typed by hand. */
-const FEEDS={
-  planner:['https://luke5446.github.io/Tibard-Productionplan/data.json','https://raw.githubusercontent.com/Luke5446/Tibard-Productionplan/main/data.json'],
-  cutlog:['https://luke5446.github.io/Tibard-Cutlog/cutlog.json','https://raw.githubusercontent.com/Luke5446/Tibard-Cutlog/main/cutlog.json'],
-  stock:['https://luke5446.github.io/Tibard-Stock-Planner/data.json','https://raw.githubusercontent.com/Luke5446/Tibard-Stock-Planner/main/data.json'],
-  plannerPage:['https://luke5446.github.io/Tibard-Productionplan/index.html','https://raw.githubusercontent.com/Luke5446/Tibard-Productionplan/main/index.html'],
-  prices:['data/fabric-prices.json'],   // snapshot kept in this repo: the last resort for fabric £/m
-  priceOverrides:['data/fabric-price-overrides.json'],   // £/m for codes the planner's list lacks (webbing)
-  ckwPrices:['data/clockwork-prices.json']   // Clockwork USD per garment, from the container order template
-};
-/* The first month each feed replaces the figure typed into the sheet */
-const FEED_FROM={wo:'2026-09', clockwork:'2026-09', fabric:'2026-10'};
-const CUTLOG_FROM='2026-09-29';   // the cutting log began; a works order due before it was never on the log
+/* ================ live feeds ================
+   The maths is in kpi-feeds.js, shared with the month-end freeze job (tools/snapshot-fabric.js). */
+const FEED_FROM=KPI.FEED_FROM;
 const CKW_USD_METRICS=['Clockwork Stock Bought In USD','Off-Shore Production USD','Off-Shore Production £'];   // the sheet's figure was always typed in USD
-const FEED={planner:null, cutlog:null, stock:null, prices:{}, overrides:{exact:{},prefix:{}}, ckwPrices:{}, priceSrc:'', status:{}, loaded:false, savedAt:{}};
+let FEED={loaded:false,planner:null,cutlog:null,stock:null,prices:{},overrides:{exact:{},prefix:{}},ckwPrices:{},snapshots:{},status:{},savedAt:{},priceSrc:''};
 let FACTS={};
-
-const d2s=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-const today=()=>d2s(new Date());
+const today=()=>KPI.todayUK();
 const curMonth=()=>today().slice(0,7);
-const lastDay=m=>{const[y,mo]=m.split('-').map(Number);return m+'-'+String(new Date(y,mo,0).getDate()).padStart(2,'0');};
 const fmtStamp=iso=>{if(!iso)return '';const d=new Date(iso);if(isNaN(d))return iso;return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});};
-
-async function fetchFirst(urls,asJson=true){
-  let lastErr=null;
-  for(const u of urls){
-    try{const r=await fetch(u,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);return asJson?await r.json():await r.text();}
-    catch(e){lastErr=e;}
-  }
-  throw lastErr||new Error('no source');
-}
-/* The planner keeps its fabric cost list (standard £ per metre) as a table inside its page */
-function pricesFromPage(html){
-  const tag='var FABRIC_PRICES=', i=html.indexOf(tag); if(i<0)return null;
-  let depth=0,k=i+tag.length;
-  for(;k<html.length;k++){const ch=html[k];if(ch==='{')depth++;else if(ch==='}'){depth--;if(depth===0){k++;break;}}}
-  try{const o=JSON.parse(html.slice(i+tag.length,k));return o&&typeof o==='object'?o:null;}catch(e){return null;}
-}
+const fmtDay=s=>{if(!s)return '';const d=new Date(s.slice(0,10)+'T00:00:00');return isNaN(d)?s:d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});};
 async function loadFeeds(){
-  const jobs={
-    planner:fetchFirst(FEEDS.planner),
-    cutlog:fetchFirst(FEEDS.cutlog),
-    stock:fetchFirst(FEEDS.stock),
-    snapshot:fetchFirst(FEEDS.prices).then(j=>j&&j.prices?j.prices:j),
-    page:fetchFirst(FEEDS.plannerPage,false).then(pricesFromPage),
-    overrides:fetchFirst(FEEDS.priceOverrides),
-    ckwPrices:fetchFirst(FEEDS.ckwPrices).then(j=>j&&j.prices?j.prices:j)
-  };
-  const keys=Object.keys(jobs), results=await Promise.allSettled(keys.map(k=>jobs[k]));
-  const got={};
-  keys.forEach((k,i)=>{const r=results[i];got[k]=r.status==='fulfilled'?r.value:null;FEED.status[k]=r.status==='fulfilled'?'ok':String((r.reason&&r.reason.message)||r.reason||'failed');});
-  FEED.planner=got.planner&&Array.isArray(got.planner.completedWOs)?got.planner:null;
-  FEED.cutlog=got.cutlog&&Array.isArray(got.cutlog.entries)?got.cutlog:null;
-  FEED.stock=got.stock&&Array.isArray(got.stock.bookedPOs)?got.stock:null;
-  if(!FEED.planner&&got.planner)FEED.status.planner='unexpected shape';
-  if(!FEED.cutlog&&got.cutlog)FEED.status.cutlog='unexpected shape';
-  if(!FEED.stock&&got.stock)FEED.status.stock='unexpected shape';
-  // fabric £/m: the snapshot in this repo, overridden by the live table on the planner page,
-  // overridden again by a price table the planner may one day publish in its data.json
-  const up=o=>{const t={};Object.keys(o||{}).forEach(k=>{const v=+o[k];if(v>0)t[k.trim().toUpperCase()]=v;});return t;};
-  FEED.prices=Object.assign({},up(got.snapshot),up(got.page),up(FEED.planner&&FEED.planner.fabricPrices));
-  FEED.priceSrc=FEED.planner&&FEED.planner.fabricPrices?'planner data':got.page?'planner page':got.snapshot?'snapshot':'none';
-  FEED.overrides={exact:up(got.overrides&&got.overrides.exact),prefix:up(got.overrides&&got.overrides.prefix)};
-  FEED.ckwPrices=up(got.ckwPrices);
-  FEED.savedAt={planner:FEED.planner&&FEED.planner.savedAt,cutlog:FEED.cutlog&&FEED.cutlog.savedAt,stock:FEED.stock&&FEED.stock.savedAt};
-  FEED.loaded=true;
-  try{ computeFeedFacts(); }
+  FEED=await KPI.loadFeeds(); FEED.loaded=true;
+  try{ FACTS=KPI.computeFacts(FEED,today()); }
   catch(e){ FACTS={}; FEED.planner=FEED.cutlog=FEED.stock=null; FEED.status.compute=String(e.message||e); }
   refreshMonths();
 }
@@ -388,106 +336,6 @@ function refreshMonths(){
   const sel=document.getElementById('monthSel'), keep=sel.value;
   sel.innerHTML=MONTHS.map(m=>`<option value="${m}">${fmtMonth(m)}</option>`).join('');
   sel.value=MONTHS.includes(keep)?keep:MONTHS[MONTHS.length-1];
-}
-
-/* Brand of a garment: a special make carries its Sage company; otherwise an OH product code is
-   Oliver Harvey and everything else (Tibard codes and customer-branded codes) is Tibard. */
-const brandOf=(code,ref,company)=>{
-  if(company)return /OLIVER/i.test(company)?'OH':'Tibard';
-  if(/^OH/i.test(code||'')||/^S-OH/i.test(ref||''))return 'OH';
-  return 'Tibard';
-};
-/* £/m for a fabric: an exact override first, then the planner's list, then a prefix rule for codes the list lacks */
-const priceFor=code=>{
-  const c=(code||'').trim().toUpperCase(), o=FEED.overrides;
-  if(o.exact[c]>0)return o.exact[c];
-  const p=FEED.prices[c]; if(p>0)return p;
-  for(const k of Object.keys(o.prefix))if(c.startsWith(k))return o.prefix[k];
-  return null;
-};
-const ckwPriceFor=code=>{const p=FEED.ckwPrices[(code||'').trim().toUpperCase()];return p>0?p:null;};
-const cutMetres=e=>e.metres!=null?e.metres:(e.std!=null?e.std:0);
-
-function computeFeedFacts(){
-  FACTS={};
-  const F=m=>FACTS[m]||(FACTS[m]={
-    wo:{done:new Set(),doneOH:new Set(),doneTib:new Set(),raised:new Set(),unitsOH:0,unitsTib:0,lines:0,refBrand:{}},
-    fab:{cutM:0,cutGBP:0,cutLines:0,cutWOs:new Set(),cutUnpriced:0,doneM:0,doneGBP:0,doneUnpriced:0,wip:null},
-    ckw:{containers:[],units:0,unitsOH:0,unitsTib:0,usd:null,usdOH:0,usdTib:0,unpriced:[]}
-  });
-  const P=FEED.planner, C=FEED.cutlog, S=FEED.stock;
-  const doneOn={};   // first completion of a works order line, as the planner dates it
-  if(P){
-    P.completedWOs.forEach(c=>{
-      if(!c.completed)return;
-      const m=c.completed.slice(0,7), f=F(m).wo, b=brandOf(c.code,c.ref,c.company);
-      f.done.add(c.ref); f.lines++;
-      if(b==='OH')f.unitsOH+=c.qty||0; else f.unitsTib+=c.qty||0;
-      // a works order with lines of both brands counts once, under the brand of most of its garments
-      const rb=f.refBrand[c.ref]||(f.refBrand[c.ref]={OH:0,Tibard:0}); rb[b]+=(c.qty||0)||1e-9;
-      const k=c.ref+'|'+c.code; if(!doneOn[k])doneOn[k]=c.completed;
-      // fabric written off on completion: the cutting room's metres where typed, else the standard,
-      // at the price frozen on the record (the planner's own ledger line)
-      const fb=c.fabric, g=F(m).fab;
-      if(fb&&fb.code){
-        const main=fb.actual!=null?fb.actual:fb.std, pr=fb.price!=null?fb.price:priceFor(fb.code);
-        if(main!=null){g.doneM+=main; if(pr!=null)g.doneGBP+=main*pr; else g.doneUnpriced++;}
-        (fb.extras||[]).forEach(x=>{const xm=x.actual!=null?x.actual:x.std, xp=x.price!=null?x.price:priceFor(x.code);
-          if(xm!=null){g.doneM+=xm; if(xp!=null)g.doneGBP+=xm*xp; else g.doneUnpriced++;}});
-      }
-    });
-    const seen=new Set();
-    (P.WOs||[]).concat(P.completedWOs).forEach(w=>{ const raised=w.createdAt||w.start||w.printedAt; if(!raised||seen.has(w.ref))return; seen.add(w.ref); F(raised.slice(0,7)).wo.raised.add(w.ref); });
-    Object.keys(FACTS).forEach(m=>{const f=FACTS[m].wo; Object.keys(f.refBrand).forEach(r=>{const rb=f.refBrand[r]; (rb.OH>rb.Tibard?f.doneOH:f.doneTib).add(r);});});
-  }
-  if(C){
-    C.entries.forEach(e=>{
-      if(e.cancelledAt||!e.cutAt)return;
-      const m=e.cutAt.slice(0,7), g=F(m).fab, mm=cutMetres(e), pr=priceFor(e.fabric);
-      g.cutM+=mm; g.cutLines++; g.cutWOs.add(e.ref);
-      if(pr!=null)g.cutGBP+=mm*pr; else g.cutUnpriced++;
-    });
-    if(P){
-      const live={}; (P.WOs||[]).forEach(w=>{live[w.ref]=w;});
-      const onLog=new Set(C.entries.map(e=>e.ref)), liveKeys=new Set(C.entries.filter(e=>!e.cancelledAt).map(e=>e.k));
-      const wipAt=asAt=>{
-        const w={asAt,metres:0,value:0,lines:0,unpriced:0,assumedLines:0,assumedValue:0,notValued:0};
-        C.entries.forEach(e=>{
-          if(e.cancelledAt){
-            // printed before the log began and withdrawn as "cut before there was a list": while the works
-            // order is still live its cloth is in WIP at the standard metres, as the planner takes it
-            if(live[e.ref]&&(e.printedAt||'')<=asAt&&!liveKeys.has(e.k)&&e.std!=null){const pr=priceFor(e.fabric);w.assumedLines++;w.lines++;w.metres+=e.std;if(pr!=null)w.assumedValue+=e.std*pr;else w.unpriced++;}
-            return;
-          }
-          if(!e.cutAt||e.cutAt>asAt)return;            // not cut yet: still on the roll
-          const done=doneOn[e.ref+'|'+e.code]; if(done&&done<=asAt)return;   // completed: written off, out of WIP
-          const mm=cutMetres(e), pr=priceFor(e.fabric); w.lines++; w.metres+=mm;
-          if(pr!=null)w.value+=mm*pr; else w.unpriced++;
-        });
-        Object.keys(live).forEach(r=>{const x=live[r]; if(x.printed&&!x.embOnly&&(!x.due||x.due>=CUTLOG_FROM)&&(x.printedAt||x.createdAt||'')<=asAt&&!onLog.has(r))w.notValued++;});
-        w.value+=w.assumedValue; w.toDate=asAt===today();
-        return w;
-      };
-      const months=new Set(Object.keys(FACTS).filter(m=>m>=FEED_FROM.fabric)); months.add(curMonth());
-      months.forEach(m=>{ if(m>curMonth())return; const end=lastDay(m); F(m).fab.wip=wipAt(end<today()?end:today()); });
-    }
-  }
-  if(S){
-    S.bookedPOs.forEach(b=>{
-      const ref=(b.ref||'').trim(); if(!/^(C|AF)\d/i.test(ref))return;   // C = container, AF = airfreight; anything else is another supplier
-      const date=b.bookedDate||b.date||''; if(!date)return;
-      const m=date.slice(0,7), g=F(m).ckw, c={ref,date,units:0,unitsOH:0,unitsTib:0,lines:(b.items||[]).length,usd:null,usdOH:0,usdTib:0,unpriced:[]};
-      (b.items||[]).forEach(it=>{
-        const q=it.qty||0, oh=brandOf(it.code)==='OH', p=ckwPriceFor(it.code);
-        c.units+=q; if(oh)c.unitsOH+=q; else c.unitsTib+=q;
-        if(p!=null){c.usd=(c.usd||0)+q*p; if(oh)c.usdOH+=q*p; else c.usdTib+=q*p;} else if(q) c.unpriced.push(it.code);
-      });
-      const v=b.valueUSD!=null?b.valueUSD:(b.usd!=null?b.usd:null); if(v!=null){c.usd=+v;}   // a value typed on the stock planner would win
-      if(c.usd!=null){g.usd=(g.usd||0)+c.usd; g.usdOH+=c.usdOH; g.usdTib+=c.usdTib;}
-      g.unpriced=g.unpriced.concat(c.unpriced);
-      g.containers.push(c); g.units+=c.units; g.unitsOH+=c.unitsOH; g.unitsTib+=c.unitsTib;
-    });
-  }
 }
 
 /* ---- source-aware readers: the feed from its cutover month, the sheet before (and when a feed is down) ---- */
@@ -505,6 +353,8 @@ function fabCutPerM(m){ const a=fabCutM(m),c=fabCutGBP(m); return a&&c!==null?c/
 function fabDoneGBP(m){ if(!(fabFeed(m)&&hasFeed('planner')))return null; const f=fx(m); return f?f.fab.doneGBP:0; }
 function fabDoneM(m){ if(!(fabFeed(m)&&hasFeed('planner')))return null; const f=fx(m); return f?f.fab.doneM:0; }
 function fabWip(m){ if(!(fabFeed(m)&&hasFeed('planner')))return null; const f=fx(m); return f&&f.fab.wip?f.fab.wip:null; }
+/* How a month's fabric figures stand: frozen on its last working day, as at that day but not yet frozen, or to date */
+function fabState(m){ if(!fabFeed(m))return null; const f=fx(m); if(!f||!f.fab.asAt)return null; const g=f.fab; return {asAt:g.asAt,closed:!!g.closed,frozen:g.frozen,lastWorkingDay:g.lastWorkingDay}; }
 const ckwFeed=m=>feedMonth(m,FEED_FROM.clockwork,'stock');
 const ckwValued=m=>ckwFeed(m)&&Object.keys(FEED.ckwPrices).length>0;   // containers can be valued: the price list is loaded
 function ckwSheetUSD(m,b){ for(const met of CKW_USD_METRICS){const v=get(m,brandName(b),'Production',met);if(v!==null)return v;} return null; }
@@ -541,21 +391,21 @@ function renderCards(d){
 
   // 1 On-shore production: £ typed in the sheet; garments made from the planner from Sep 2026
   const ov=onTotal(d), uOH=unitsMade(d,'OH'), uT=unitsMade(d,'Tibard');
-  cards.push({label:'On-Shore Production',value:v(ov,money),sub:'£ made in-house'+(isCur?' · to date':''),
+  cards.push({label:'On-Shore Production',go:'pOn',value:v(ov,money),sub:'£ made in-house'+(isCur?' · to date':''),
     deltas:deltaHTML(ov,onTotal(pm),pmL)+deltaHTML(ov,onTotal(ya),'vs LY'),
     split:brandSplit(get(d,'Tibard','Production','On-Shore Production £'),get(d,'Oliver Harvey','Production','On-Shore Production £')),
     split2:`<span>Made${chip(feedMonth(d,FEED_FROM.wo,'planner')?'planner':'')} ${dotO}OH <b>${v(uOH,num)}</b> · ${dotT}Tibard <b>${v(uT,num)}</b></span>`});
 
   // 2 Works orders raised and completed (production planner, from Sep 2026)
   const wd=woDone(d), wr=woRaised(d);
-  cards.push({label:'Works Orders',chip:wd!==null?'planner':'',value:v(wd,num),sub:wd!==null?'completed in the month'+(isCur?' · to date':''):'from the planner, Sep 2026 on',
+  cards.push({label:'Works Orders',chip:wd!==null?'planner':'',go:'pWo',value:v(wd,num),sub:wd!==null?'completed in the month'+(isCur?' · to date':''):'from the planner, Sep 2026 on',
     deltas:deltaHTML(wd,woDone(pm),pmL)+deltaHTML(wd,woDone(ya),'vs LY'),
     split:`<span>Raised <b>${v(wr,num)}</b></span><span>Completed ${dotO}OH <b>${v(woDone(d,'OH'),num)}</b> · ${dotT}Tibard <b>${v(woDone(d,'Tibard'),num)}</b></span>`});
 
   // 3 Clockwork stock bought in: USD typed in the sheet; containers and units from the stock planner from Sep 2026
   const ck=ckwUSDTotal(d), conts=ckwContainers(d), cu=ckwUnits(d,'all');
   const ckUnp=ckwUnpriced(d);
-  cards.push({label:'Clockwork Stock Bought In',chip:ckwValued(d)?'stock planner':'',value:v(ck,usdK),sub:'USD · by container booked-in month'+(isCur&&ckwValued(d)?' · to date':''),
+  cards.push({label:'Clockwork Stock Bought In',chip:ckwValued(d)?'stock planner':'',go:'pCkw',value:v(ck,usdK),sub:'USD · by container booked-in month'+(isCur&&ckwValued(d)?' · to date':''),
     deltas:deltaHTML(ck,ckwUSDTotal(pm),pmL)+deltaHTML(ck,ckwUSDTotal(ya),'vs LY'),
     split:brandSplit(ckwUSD(d,'Tibard'),ckwUSD(d,'OH'),usdK),
     split2:ckwFeed(d)?`<span>${conts.length?conts.map(c=>c.ref).join(', '):'No containers booked in'}${cu?' · <b>'+num(cu)+'</b> units':''}${ckwValued(d)?'':chip('stock planner')}</span>`+(ckUnp.length?`<span class="note">${ckUnp.length} code${ckUnp.length>1?'s':''} with no USD price: ${ckUnp.slice(0,3).join(', ')}${ckUnp.length>3?'…':''}</span>`:'')
@@ -563,22 +413,23 @@ function renderCards(d){
 
   // 4 Stock valuation (lower = good)
   const sv=sum(d,['Tibard','Oliver Harvey'],'Stock','Stock Valuation £');
-  cards.push({label:'Stock Valuation',value:v(sv,money),sub:'£ at month end',
+  cards.push({label:'Stock Valuation',go:'pStock',value:v(sv,money),sub:'£ at month end',
     deltas:deltaHTML(sv,sum(pm,['Tibard','Oliver Harvey'],'Stock','Stock Valuation £'),pmL,{invert:true})+deltaHTML(sv,sum(ya,['Tibard','Oliver Harvey'],'Stock','Stock Valuation £'),'vs LY',{invert:true}),
     split:brandSplit(get(d,'Tibard','Stock','Stock Valuation £'),get(d,'Oliver Harvey','Stock','Stock Valuation £'))});
 
   // 5 Fabric: value cut in the month, what was completed (written off) and what is left in WIP at month end
-  const fc=fabCutGBP(d), fm=fabCutM(d), fpm=fabCutPerM(d), fd=fabDoneGBP(d), w=fabWip(d);
+  const fc=fabCutGBP(d), fm=fabCutM(d), fpm=fabCutPerM(d), fd=fabDoneGBP(d), w=fabWip(d), fs=fabState(d);
+  const fabWhen=fs?(fs.closed?(fs.frozen?'frozen '+fmtDay(fs.asAt):'as at '+fmtDay(fs.asAt)+', not yet frozen'):'to date'):'';
   const cutUnp=fabFeed(d)&&fx(d)?fx(d).fab.cutUnpriced:0;
   const wipNote=[(cutUnp?cutUnp+' cut line'+(cutUnp>1?'s':'')+' with no price':''),(w&&w.unpriced?w.unpriced+' WIP line'+(w.unpriced>1?'s':'')+' with no price':''),(w&&w.notValued?w.notValued+' works order'+(w.notValued>1?'s':'')+' not on the cutting log':'')].filter(Boolean).join(' · ');
-  cards.push({label:'Fabric Cut',chip:fabFeed(d)?'cutting log':'',value:v(fc,money),sub:fm!==null?num(fm)+' m'+(fpm!==null?' · '+gbp2(fpm)+'/m':'')+(isCur?' · to date':''):'',
+  cards.push({label:'Fabric Cut',chip:fabFeed(d)?(fs&&fs.frozen?'frozen':'cutting log'):'',go:'pFab',value:v(fc,money),sub:fm!==null?num(fm)+' m'+(fpm!==null?' · '+gbp2(fpm)+'/m':'')+(fabWhen?' · '+fabWhen:''):'',
     deltas:deltaHTML(fc,fabCutGBP(pm),pmL)+deltaHTML(fc,fabCutGBP(ya),'vs LY'),
-    split:`<span>Completed <b>${v(fd,money)}</b></span><span>WIP${w&&w.toDate?' today':' month end'} <b>${w?(w.unpriced?'≥ ':'')+money(w.value):'—'}</b></span>`,
+    split:`<span>Completed <b>${v(fd,money)}</b></span><span>WIP${fs?(fs.closed?' at '+fmtDay(fs.asAt):' today'):' month end'} <b>${w?(w.unpriced?'≥ ':'')+money(w.value):'—'}</b></span>`,
     split2:wipNote?`<span class="note">${wipNote}</span>`:''});
 
   // 6 Orders despatched
   const od=sum(d,['Tibard','Oliver Harvey'],'Warehouse','Orders Despatched'), late=sum(d,['Tibard','Oliver Harvey'],'Warehouse','Late Orders');
-  cards.push({label:'Orders Despatched',value:v(od,num),
+  cards.push({label:'Orders Despatched',go:'pWh',value:v(od,num),
     deltas:deltaHTML(od,sum(pm,['Tibard','Oliver Harvey'],'Warehouse','Orders Despatched'),pmL)+deltaHTML(od,sum(ya,['Tibard','Oliver Harvey'],'Warehouse','Orders Despatched'),'vs LY'),
     split:`<span>Late orders <b>${v(late,num)}</b></span><span>${dotT}Tibard <b>${v(get(d,'Tibard','Warehouse','Orders Despatched'),num)}</b> · ${dotO}OH <b>${v(get(d,'Oliver Harvey','Warehouse','Orders Despatched'),num)}</b></span>`});
 
@@ -586,18 +437,18 @@ function renderCards(d){
   const wOtif=dd=>{const to=get(dd,'Tibard','Warehouse','Orders Despatched'),tp=get(dd,'Tibard','Warehouse','OTIF %'),oo=get(dd,'Oliver Harvey','Warehouse','Orders Despatched'),op=get(dd,'Oliver Harvey','Warehouse','OTIF %');
     if(to===null||tp===null||oo===null||op===null)return null;return (to*tp+oo*op)/(to+oo);};
   const tibP=get(d,'Tibard','Warehouse','OTIF %'),ohP=get(d,'Oliver Harvey','Warehouse','OTIF %'), go=wOtif(d);
-  cards.push({label:'Group OTIF',value:v(go,pct),sub:'on time in full · target 95%',warn:go!==null&&go<0.95,
+  cards.push({label:'Group OTIF',go:'pOtif',value:v(go,pct),sub:'on time in full · target 95%',warn:go!==null&&go<0.95,
     deltas:deltaHTML(go,wOtif(pm),pmL,{pctPoints:true})+deltaHTML(go,wOtif(ya),'vs LY',{pctPoints:true}),
     split:brandSplit(tibP,ohP,pct)});
 
   // 8 DPD consignments
   const dc=get(d,'Group','Warehouse','DPD Consignments'), cart=get(d,'Group','Warehouse','DPD Cartons');
-  cards.push({label:'DPD Consignments',value:v(dc,num),
+  cards.push({label:'DPD Consignments',go:'pWh',value:v(dc,num),
     deltas:deltaHTML(dc,get(pm,'Group','Warehouse','DPD Consignments'),pmL)+deltaHTML(dc,get(ya,'Group','Warehouse','DPD Consignments'),'vs LY'),
     split:`<span>Cartons <b>${v(cart,num)}</b></span>`});
 
   document.getElementById('cards').innerHTML=cards.map(c=>`
-    <div class="card${c.warn?' warn':''}">
+    <div class="card${c.warn?' warn':''}" data-go="${c.go||''}" role="link" tabindex="0" title="Go to the ${c.label.toLowerCase()} chart">
       <div class="k-label">${c.label}${chip(c.chip)}</div>
       <div class="k-value">${c.value}</div>
       ${c.sub?`<div class="k-sub">${c.sub}</div>`:''}
@@ -606,6 +457,11 @@ function renderCards(d){
       ${c.split2?`<div class="split">${c.split2}</div>`:''}
     </div>`).join('');
 }
+
+/* A click (or Enter) on a tile scrolls to its chart and flashes the panel */
+document.getElementById('cards').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)goTo(c.dataset.go);});
+document.getElementById('cards').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const c=e.target.closest('.card');if(c){e.preventDefault();goTo(c.dataset.go);}});
+function goTo(id){const p=id&&document.getElementById(id);if(!p)return;p.scrollIntoView({behavior:'smooth',block:'start'});p.classList.remove('flash');void p.offsetWidth;p.classList.add('flash');setTimeout(()=>p.classList.remove('flash'),1600);}
 
 let charts={};
 function mkChart(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
@@ -722,12 +578,12 @@ function renderDetail(d){
       ['Units · Tibard',dd=>ckwUnits(dd,'Tibard'),'num',dd=>src(dd,ckwFeed,'stock planner')],
       ['Units · OH',dd=>ckwUnits(dd,'OH'),'num',dd=>src(dd,ckwFeed,'stock planner')]]],
     ['Fabric',[
-      ['Fabric cut (metres)',fabCutM,'m',dd=>src(dd,fabFeed,'cutting log')],
-      ['Fabric cut £',fabCutGBP,'gbp',dd=>src(dd,fabFeed,'cutting log')],
+      ['Fabric cut (metres)',fabCutM,'m',dd=>{const f=fabState(dd);return f&&f.frozen?'frozen':src(dd,fabFeed,'cutting log');}],
+      ['Fabric cut £',fabCutGBP,'gbp',dd=>{const f=fabState(dd);return f&&f.frozen?'frozen':src(dd,fabFeed,'cutting log');}],
       ['Average cost per metre',fabCutPerM,'gbp2'],
       ['Fabric completed £ (written off)',fabDoneGBP,'gbp'],
       ['Fabric completed (metres)',fabDoneM,'m'],
-      ['Fabric in WIP £ at month end',wipV,'gbp'],
+      ['Fabric in WIP £ (at the last working day; today for the open month)',wipV,'gbp',dd=>{const f=fabState(dd);return f&&f.frozen?'frozen':null;}],
       ['Fabric in WIP (metres)',wipM,'m']]],
     ['Service',[
       ['Tibard OTIF',G('Tibard','Warehouse','OTIF %'),'pct'],

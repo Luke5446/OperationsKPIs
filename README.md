@@ -9,7 +9,7 @@ Google Sheet URL it reads is encrypted in the page and only decrypts with the pa
 |---|---|---|
 | On-shore production £, stock valuation, OTIF, orders despatched, late orders, DPD | **KPI Data sheet** (typed each month) | always |
 | Garments made (OH / Tibard), works orders raised and completed | **Production planner** `data.json` | Sep 2026 |
-| Fabric cut (metres and £), fabric completed £, fabric in WIP at month end | **Cutting log** `cutlog.json` + production planner | Oct 2026 |
+| Fabric cut (metres and £), fabric completed £, fabric in WIP, each month as at its **last working day** and frozen there | **Cutting log** `cutlog.json` + production planner; `data/fabric-snapshots.json` once frozen | Oct 2026 |
 | Fabric cut before Oct 2026 | KPI Data sheet rows `Fabric Cut Metres` / `Fabric Cost of Usage £` | Apr 2025 – Sep 2026 |
 | Clockwork stock bought in, USD, before Sep 2026 | KPI Data sheet (typed; the metric `Off-Shore Production £` was always entered in USD) | — |
 | Clockwork stock bought in, USD, containers and units | **Stock planner** `data.json`, `bookedPOs` whose ref starts `C` (container) or `AF` (airfreight), by booked-in date, each garment valued at `data/clockwork-prices.json` (USD per garment from the Container Order Template's Data tab) | Sep 2026 |
@@ -46,10 +46,28 @@ copy first and `raw.githubusercontent.com` as a fallback. No token is needed.
 - **Fabric completed** = the planner's own write-off: on every line completed in the month, the
   cutting room's metres (else standard) × the price frozen on the record, mesh and contrast extras
   included.
-- **Fabric in WIP** at month end (today for the current month) = lines marked cut on or before that
-  day whose works order was not completed by then, valued the same way; plus, while they are still
-  live, works orders printed before the log began, taken as cut at standard — as the planner's
-  KPIs tab does. A count of works orders the log never had is shown when any exist.
+- **Fabric in WIP** as at a day = lines marked cut on or before that day whose works order was not
+  completed by then, valued the same way; plus, while they are still live, works orders printed
+  before the log began, taken as cut at standard — as the planner's KPIs tab does. A count of works
+  orders the log never had is shown when any exist.
+- **Month end = the last working day** (Monday to Friday, England's bank holidays excluded). The
+  month in progress shows figures to date; a closed month shows them as at its last working day.
+
+### Freezing the month
+
+`tools/snapshot-fabric.js` runs every weekday at 10:30 UTC through the `Freeze month-end fabric KPIs`
+workflow (`.github/workflows/fabric-snapshot.yml`). The first run after a month's last working day
+works out that month's fabric cut, completed and WIP as at that day and commits them to
+`data/fabric-snapshots.json`; the dashboard then shows those figures for good (the tile says
+"frozen") however the feeds change afterwards. To redo a month, run the workflow by hand with the
+month in its box, or locally: `node tools/snapshot-fabric.js 2026-10`.
+
+The feed maths lives in `kpi-feeds.js`, used by both the page and the freeze job, so the two cannot
+disagree.
+
+## Tiles
+
+Click a headline tile (or press Enter on it) to jump to its chart.
 
 ## Adding a month to the sheet
 
