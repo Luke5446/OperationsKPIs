@@ -157,7 +157,9 @@ function wipAt(F,asAt){
     const mm=cutMetres(e), pr=priceFor(e.fabric); w.lines++; w.metres+=mm;
     if(pr!=null)w.value+=mm*pr; else w.unpriced++;
   });
-  Object.keys(live).forEach(r=>{const x=live[r]; if(x.printed&&!x.embOnly&&(!x.due||x.due>=CUTLOG_FROM)&&(x.printedAt||x.createdAt||'')<=asAt&&!onLog.has(r))w.notValued++;});
+  // a works order the log never had: not valued — unless it was split off a works order that is on the
+  // log, whose cloth was cut with the parent (the planner asks the cutting room for nothing on those)
+  Object.keys(live).forEach(r=>{const x=live[r]; if(x.printed&&!x.embOnly&&(!x.due||x.due>=CUTLOG_FROM)&&(x.printedAt||x.createdAt||'')<=asAt&&!onLog.has(r)&&!(x.splitFrom&&onLog.has(x.splitFrom)))w.notValued++;});
   w.value+=w.assumedValue;
   return w;
 }
