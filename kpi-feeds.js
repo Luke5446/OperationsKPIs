@@ -43,7 +43,24 @@ const isWorkingDay=s=>{const w=dow(s);return w!==0&&w!==6&&!bankHolidays(+s.slic
 /* The last working day of a month: the day the month's fabric figures are frozen */
 const lastWorkingDay=m=>{let d=lastDay(m);while(!isWorkingDay(d))d=addDays(d,-1);return d;};
 /* Today's date in the UK, whatever the machine's zone (GitHub's runners are UTC) */
-const todayUK=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const ukDate=d=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+const todayUK=()=>ukDate(new Date());
+const nextMonth=m=>{const[y,mo]=m.split('-').map(Number);return mo===12?(y+1)+'-01':y+'-'+pad(mo+1);};
+const addWorkingDays=(s,n)=>{let d=s,k=0;while(k<n){d=addDays(d,1);if(isWorkingDay(d))k++;}return d;};
+/* A month's fabric runs from the day after the previous month's last working day to its own last
+   working day, so a cut or completion dated on a month-end weekend belongs to the next month */
+const monthOf=day=>{const m=day.slice(0,7);return day>lastWorkingDay(m)?nextMonth(m):m;};
+/* After its last working day a month settles for this many working days: back-dated cut marks and
+   completions (a Friday cut marked on Monday) still revise it. After that it is final. */
+const SETTLE_DAYS=5;
+const finalOn=m=>addWorkingDays(lastWorkingDay(m),SETTLE_DAYS);
+/* A mark recorded after its month was made final goes to the month it was recorded in, so it is
+   counted somewhere rather than nowhere */
+function lateMonth(F,m,stampIso){
+  const snap=F.snapshots&&F.snapshots[m];
+  if(snap&&snap.final&&stampIso&&snap.takenAt&&stampIso>snap.takenAt){const d=ukDate(new Date(stampIso));return isNaN(new Date(stampIso))?m:monthOf(d);}
+  return m;
+}
 
 /* ---------- fetching ---------- */
 async function fetchFirst(urls,asJson,fetchImpl){
@@ -131,7 +148,7 @@ function cutByMonth(F,upTo){
   const priceFor=makePriceFor(F), by={};
   (F.cutlog?F.cutlog.entries:[]).forEach(e=>{
     if(e.cancelledAt||!e.cutAt)return; if(upTo&&e.cutAt>upTo)return;
-    const m=e.cutAt.slice(0,7), g=by[m]||(by[m]={cutM:0,cutGBP:0,cutLines:0,cutWOs:new Set(),cutUnpriced:0});
+    const m=lateMonth(F,monthOf(e.cutAt),e.adjustedAt||e.at), g=by[m]||(by[m]={cutM:0,cutGBP:0,cutLines:0,cutWOs:new Set(),cutUnpriced:0});
     const mm=cutMetres(e), pr=priceFor(e.fabric);
     g.cutM+=mm; g.cutLines++; g.cutWOs.add(e.ref); if(pr!=null)g.cutGBP+=mm*pr; else g.cutUnpriced++;
   });
@@ -144,8 +161,11 @@ function wipAt(F,asAt){
   const P=F.planner, C=F.cutlog, priceFor=makePriceFor(F);
   const w={asAt,metres:0,value:0,lines:0,unpriced:0,assumedLines:0,assumedValue:0,notValued:0};
   if(!P||!C)return null;
-  const doneOn={}; P.completedWOs.forEach(c=>{const k=c.ref+'|'+c.code; if(c.completed&&!doneOn[k])doneOn[k]=c.completed;});
+  const doneOn={}, lastDone={}, doneRec={};
+  P.completedWOs.forEach(c=>{const k=c.ref+'|'+c.code; if(!c.completed)return; if(!doneOn[k])doneOn[k]=c.completed; if(!lastDone[c.ref]||c.completed>lastDone[c.ref]){lastDone[c.ref]=c.completed;doneRec[c.ref]=c;}});
+  // a works order was live at asAt if it is live now, or its last line was completed after asAt
   const live={}; (P.WOs||[]).forEach(x=>{live[x.ref]=x;});
+  Object.keys(lastDone).forEach(r=>{if(!live[r]&&lastDone[r]>asAt){const c=doneRec[r];live[r]={ref:r,printed:!!c.printedAt,printedAt:c.printedAt,createdAt:c.createdAt,due:c.due,embOnly:!!c.embOnly,splitFrom:c.splitFrom,wasLiveAt:true};}});
   const onLog=new Set(C.entries.map(e=>e.ref)), liveKeys=new Set(C.entries.filter(e=>!e.cancelledAt).map(e=>e.k));
   C.entries.forEach(e=>{
     if(e.cancelledAt){
@@ -170,7 +190,7 @@ function doneByMonth(F,upTo){
   (F.planner?F.planner.completedWOs:[]).forEach(c=>{
     if(!c.completed)return; if(upTo&&c.completed>upTo)return;
     const fb=c.fabric; if(!fb||!fb.code)return;
-    const m=c.completed.slice(0,7), g=by[m]||(by[m]={doneM:0,doneGBP:0,doneUnpriced:0});
+    const m=lateMonth(F,monthOf(c.completed),c.bookedAt), g=by[m]||(by[m]={doneM:0,doneGBP:0,doneUnpriced:0});
     const main=fb.actual!=null?fb.actual:fb.std, pr=fb.price!=null?fb.price:priceFor(fb.code);
     if(main!=null){g.doneM+=main; if(pr!=null)g.doneGBP+=main*pr; else g.doneUnpriced++;}
     (fb.extras||[]).forEach(x=>{const xm=x.actual!=null?x.actual:x.std, xp=x.price!=null?x.price:priceFor(x.code);
@@ -204,22 +224,27 @@ function computeFacts(F,today){
     (P.WOs||[]).concat(P.completedWOs).forEach(w=>{const raised=w.createdAt||w.start||w.printedAt; if(!raised||seen.has(w.ref))return; seen.add(w.ref); M(raised.slice(0,7)).wo.raised.add(w.ref);});
     Object.keys(FACTS).forEach(m=>{const f=FACTS[m].wo; Object.keys(f.refBrand).forEach(r=>{const rb=f.refBrand[r]; (rb.OH>rb.Tibard?f.doneOH:f.doneTib).add(r);});});
   }
-  if(C){
-    // every month with a cut line, plus the current month: as at its last working day, or today while it is open
-    const months=new Set(Object.keys(cutByMonth(F)).filter(m=>m>=FEED_FROM.fabric)); months.add(cm);
-    Object.keys(doneByMonth(F)).filter(m=>m>=FEED_FROM.fabric).forEach(m=>months.add(m));
+  {
+    // every month with a cut line, a completion or a stored snapshot, plus the current month:
+    // as at its last working day, or today while it is open
+    const months=new Set([cm]);
+    if(C)Object.keys(cutByMonth(F)).filter(m=>m>=FEED_FROM.fabric).forEach(m=>months.add(m));
+    if(P)Object.keys(doneByMonth(F)).filter(m=>m>=FEED_FROM.fabric).forEach(m=>months.add(m));
+    Object.keys(F.snapshots||{}).filter(m=>m>=FEED_FROM.fabric).forEach(m=>months.add(m));
     months.forEach(m=>{
       if(m>cm)return;
-      const lwd=lastWorkingDay(m), closed=today>lwd, asAt=closed?lwd:today;
+      const lwd=lastWorkingDay(m), closed=today>lwd, asAt=closed?lwd:today, fo=finalOn(m);
       const snap=F.snapshots&&F.snapshots[m];
+      // a snapshot taken before its own as-at day (an open month forced by hand) is no good
+      const snapOk=!!(snap&&snap.asAt&&(!snap.takenAt||ukDate(new Date(snap.takenAt))>=snap.asAt));
       const g=M(m).fab;
-      if(closed&&snap){   // frozen on the last working day: the stored figures stand whatever the feeds say now
-        Object.assign(g,{cutM:snap.cutM,cutGBP:snap.cutGBP,cutLines:snap.cutLines,cutUnpriced:snap.cutUnpriced||0,doneM:snap.doneM,doneGBP:snap.doneGBP,doneUnpriced:snap.doneUnpriced||0,wip:snap.wip,asAt:snap.asAt,frozen:snap.takenAt||snap.asAt});
-      }else{
+      if(closed&&snapOk){   // frozen: the stored figures stand whatever the feeds say now
+        Object.assign(g,{cutM:snap.cutM,cutGBP:snap.cutGBP,cutLines:snap.cutLines,cutUnpriced:snap.cutUnpriced||0,doneM:snap.doneM,doneGBP:snap.doneGBP,doneUnpriced:snap.doneUnpriced||0,wip:snap.wip,asAt:snap.asAt,frozen:snap.takenAt||snap.asAt,final:!!snap.final,revisedAt:snap.revisedAt||null});
+      }else if(C){
         const x=fabricMonth(F,m,asAt);
-        Object.assign(g,{cutM:x.cutM,cutGBP:x.cutGBP,cutLines:x.cutLines,cutUnpriced:x.cutUnpriced,doneM:x.doneM,doneGBP:x.doneGBP,doneUnpriced:x.doneUnpriced,wip:x.wip,asAt,frozen:null});
-      }
-      g.closed=closed; g.lastWorkingDay=lwd;
+        Object.assign(g,{cutM:x.cutM,cutGBP:x.cutGBP,cutLines:x.cutLines,cutUnpriced:x.cutUnpriced,doneM:x.doneM,doneGBP:x.doneGBP,doneUnpriced:x.doneUnpriced,wip:x.wip,asAt,frozen:null,final:false,revisedAt:null});
+      }else return;   // no cutting log and nothing frozen: nothing to show for this month
+      g.closed=closed; g.lastWorkingDay=lwd; g.finalOn=fo;
     });
   }
   if(S){
@@ -232,7 +257,15 @@ function computeFacts(F,today){
         c.units+=q; if(oh)c.unitsOH+=q; else c.unitsTib+=q;
         if(p!=null){c.usd=(c.usd||0)+q*p; if(oh)c.usdOH+=q*p; else c.usdTib+=q*p;} else if(q) c.unpriced.push(it.code);
       });
-      const v=b.valueUSD!=null?b.valueUSD:(b.usd!=null?b.usd:null); if(v!=null){c.usd=+v;}   // a value typed on the stock planner would win
+      // a value put on the container in the stock planner (its USD box) wins over the price list;
+      // the brand split then follows the priced lines, or the units where nothing is priced
+      const v=b.valueUSD!=null?b.valueUSD:(b.usd!=null?b.usd:null);
+      if(v!=null&&+v>=0){
+        const priced=c.usd; c.usd=+v;
+        if(priced>0){c.usdOH=c.usdOH*c.usd/priced;c.usdTib=c.usdTib*c.usd/priced;}
+        else if(c.units>0){c.usdOH=c.usd*c.unitsOH/c.units;c.usdTib=c.usd*c.unitsTib/c.units;}
+        c.unpriced=[]; c.typed=true;
+      }
       if(c.usd!=null){g.usd=(g.usd||0)+c.usd; g.usdOH+=c.usdOH; g.usdTib+=c.usdTib;}
       g.unpriced=g.unpriced.concat(c.unpriced);
       g.containers.push(c); g.units+=c.units; g.unitsOH+=c.unitsOH; g.unitsTib+=c.unitsTib;
@@ -241,6 +274,6 @@ function computeFacts(F,today){
   return FACTS;
 }
 
-const KPI={FEEDS,FEED_FROM,CUTLOG_FROM,d2s,lastDay,lastWorkingDay,isWorkingDay,bankHolidays,todayUK,fetchFirst,pricesFromPage,loadFeeds,brandOf,makePriceFor,makeCkwPriceFor,cutMetres,cutByMonth,doneByMonth,wipAt,fabricMonth,computeFacts};
+const KPI={FEEDS,FEED_FROM,CUTLOG_FROM,SETTLE_DAYS,d2s,lastDay,lastWorkingDay,isWorkingDay,bankHolidays,addWorkingDays,nextMonth,monthOf,finalOn,ukDate,todayUK,fetchFirst,pricesFromPage,loadFeeds,brandOf,makePriceFor,makeCkwPriceFor,cutMetres,cutByMonth,doneByMonth,wipAt,fabricMonth,computeFacts};
 if(typeof module!=='undefined'&&module.exports)module.exports=KPI; else root.KPI=KPI;
 })(typeof globalThis!=='undefined'?globalThis:this);
