@@ -75,7 +75,10 @@ disagree.
 
 ## Tiles
 
-Click a headline tile (or press Enter on it) to jump to its chart.
+Click a headline tile (or press Enter on it) to jump to its chart. To come back, click the chart
+itself (with a mouse; on a phone a tap shows the tooltip instead), its heading or the **↑ Tile**
+button, or any row of its group in the month detail table: the page scrolls back up to the tile the
+chart was reached from and flashes it, so there is no scrolling up and down.
 
 ## Adding a month to the sheet
 

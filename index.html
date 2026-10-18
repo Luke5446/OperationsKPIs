@@ -75,6 +75,16 @@ main{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
 .card:focus-visible{outline:3px solid var(--chambray);outline-offset:2px}
 .panel{scroll-margin-top:16px;transition:box-shadow .35s ease}
 .panel.flash{box-shadow:0 0 0 3px var(--chambray),var(--shadow)}
+.card.flash{box-shadow:0 0 0 3px var(--chambray),var(--shadow)}
+.panel-head{cursor:pointer}
+.panel-head .up{margin-left:auto;font:700 .66rem/1.3 'Inter',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--chambray);background:var(--tagbg);border:1px solid var(--line);border-radius:999px;padding:2px 8px;cursor:pointer;white-space:nowrap}
+.panel-head .up:hover,.panel-head:hover .up{background:var(--chambray);color:#fff;border-color:var(--chambray)}
+.panel-head .up:focus-visible{outline:3px solid var(--chambray);outline-offset:2px}
+body.mouse .chart-wrap canvas{cursor:pointer}
+tbody tr.grp td{cursor:pointer}
+tbody tr.grp td .up{float:right;font:700 .6rem/1.3 'Inter',sans-serif;letter-spacing:.04em;color:var(--chambray);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:1px 7px;text-transform:uppercase}
+tbody tr.grp:hover td .up{background:var(--chambray);color:#fff;border-color:var(--chambray)}
+tbody tr[data-go]{cursor:pointer}
 .card.warn{border-top-color:var(--brand-red)}
 .card .k-label{font-size:.68rem;line-height:1.15;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;flex-wrap:wrap}
 .card .k-sub{font-size:.74rem;color:var(--muted);margin-top:-4px}
@@ -451,7 +461,7 @@ function renderCards(d){
     split:`<span>Cartons <b>${v(cart,num)}</b></span>`});
 
   document.getElementById('cards').innerHTML=cards.map(c=>`
-    <div class="card${c.warn?' warn':''}" data-go="${c.go||''}" role="link" tabindex="0" title="Go to the ${c.label.toLowerCase()} chart">
+    <div class="card${c.warn?' warn':''}" data-go="${c.go||''}" data-label="${c.label}" role="link" tabindex="0" title="Go to the ${c.label.toLowerCase()} chart">
       <div class="k-label">${c.label}${chip(c.chip)}</div>
       <div class="k-value">${c.value}</div>
       ${c.sub?`<div class="k-sub">${c.sub}</div>`:''}
@@ -462,9 +472,43 @@ function renderCards(d){
 }
 
 /* A click (or Enter) on a tile scrolls to its chart and flashes the panel */
-document.getElementById('cards').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)goTo(c.dataset.go);});
-document.getElementById('cards').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const c=e.target.closest('.card');if(c){e.preventDefault();goTo(c.dataset.go);}});
-function goTo(id){const p=id&&document.getElementById(id);if(!p)return;p.scrollIntoView({behavior:'smooth',block:'start'});p.classList.remove('flash');void p.offsetWidth;p.classList.add('flash');setTimeout(()=>p.classList.remove('flash'),1600);}
+document.getElementById('cards').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)goTo(c.dataset.go,c.dataset.label);});
+document.getElementById('cards').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const c=e.target.closest('.card');if(c){e.preventDefault();goTo(c.dataset.go,c.dataset.label);}});
+function flash(el){el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1600);}
+const lastTile={};   // panel id → the tile it was last reached from
+function goTo(id,fromLabel){const p=id&&document.getElementById(id);if(!p)return;if(fromLabel)lastTile[id]=fromLabel;p.scrollIntoView({behavior:'smooth',block:'start'});flash(p);}
+/* ...and a click on the chart, its heading, or its rows in the month detail
+   goes back up to the matching tile (the one it was reached from, where two
+   tiles share a chart), so there is no scrolling up and down. */
+function backToTile(id){
+  const cards=[...document.querySelectorAll('#cards .card[data-go="'+id+'"]')];if(!cards.length)return;
+  const c=cards.find(x=>x.dataset.label===lastTile[id])||cards[0];
+  c.scrollIntoView({behavior:'smooth',block:'start'});flash(c);try{c.focus({preventScroll:true});}catch(e){}
+}
+const PANEL_TILE={pOn:'On-Shore Production',pWo:'Works Orders',pCkw:'Clockwork Stock Bought In',pStock:'Stock Valuation',pFab:'Fabric Cut',pWh:'Orders Despatched',pOtif:'Group OTIF'};
+(function wireBackToTile(){
+  if(window.matchMedia&&matchMedia('(hover: hover) and (pointer: fine)').matches)document.body.classList.add('mouse');
+  document.querySelectorAll('.panel[id]').forEach(p=>{
+    const head=p.querySelector('.panel-head');if(!head)return;
+    const b=document.createElement('button');b.type='button';b.className='up';b.textContent='\u2191 Tile';b.title='Back up to the '+(PANEL_TILE[p.id]||'matching').toLowerCase()+' tile';
+    head.appendChild(b);
+    head.addEventListener('click',e=>{e.preventDefault();backToTile(p.id);});
+    // A click on the chart itself goes back too (with a mouse; a tap on a
+    // phone shows the tooltip instead), unless it lands on the legend
+    const cv=p.querySelector('canvas');
+    if(cv)cv.addEventListener('click',e=>{
+      if(!document.body.classList.contains('mouse'))return;
+      const ch=charts[cv.id];
+      if(ch&&ch.legend&&ch.legend.legendHitBoxes&&ch.legend.legendHitBoxes.length){
+        const pos=Chart.helpers.getRelativePosition(e,ch);
+        if(ch.legend.legendHitBoxes.some(h=>pos.x>=h.left&&pos.x<=h.left+h.width&&pos.y>=h.top&&pos.y<=h.top+h.height))return;
+      }
+      backToTile(p.id);
+    });
+  });
+  const det=document.getElementById('detail');
+  det.addEventListener('click',e=>{const tr=e.target.closest('tr[data-go]');if(tr)backToTile(tr.dataset.go);});
+})();
 
 let charts={};
 function mkChart(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
@@ -562,17 +606,17 @@ function renderDetail(d){
   const wipV=dd=>{const w=fabWip(dd);return w?w.value:null;}, wipM=dd=>{const w=fabWip(dd);return w?w.metres:null;};
   const src=(dd,feed,name)=>feed(dd)?name:'sheet';
   const groups=[
-    ['On-shore production',[
+    ['On-shore production','pOn',[
       ['Tibard on-shore £',G('Tibard','Production','On-Shore Production £'),'gbp'],
       ['OH on-shore £',G('Oliver Harvey','Production','On-Shore Production £'),'gbp'],
       ['Tibard garments made',dd=>unitsMade(dd,'Tibard'),'num',dd=>src(dd,m=>feedMonth(m,FEED_FROM.wo,'planner'),'planner')],
       ['OH garments made',dd=>unitsMade(dd,'OH'),'num',dd=>src(dd,m=>feedMonth(m,FEED_FROM.wo,'planner'),'planner')]]],
-    ['Works orders (production planner)',[
+    ['Works orders (production planner)','pWo',[
       ['Works orders raised',woRaised,'num'],
       ['Works orders completed',dd=>woDone(dd),'num'],
       ['Completed · Tibard',dd=>woDone(dd,'Tibard'),'num'],
       ['Completed · OH',dd=>woDone(dd,'OH'),'num']]],
-    ['Clockwork stock bought in (USD)',[
+    ['Clockwork stock bought in (USD)','pCkw',[
       ['Tibard $',dd=>ckwUSD(dd,'Tibard'),'usd',dd=>src(dd,ckwValued,'stock planner')],
       ['OH $',dd=>ckwUSD(dd,'OH'),'usd',dd=>src(dd,ckwValued,'stock planner')],
       ['Combined $ (pre-split)',dd=>ckwUSD(dd,'Group'),'usd'],
@@ -580,7 +624,7 @@ function renderDetail(d){
       ['Containers booked in',conts,'txt'],
       ['Units · Tibard',dd=>ckwUnits(dd,'Tibard'),'num',dd=>src(dd,ckwFeed,'stock planner')],
       ['Units · OH',dd=>ckwUnits(dd,'OH'),'num',dd=>src(dd,ckwFeed,'stock planner')]]],
-    ['Fabric',[
+    ['Fabric','pFab',[
       ['Fabric cut (metres)',fabCutM,'m',dd=>fabChip(dd)||'sheet'],
       ['Fabric cut £',fabCutGBP,'gbp',dd=>fabChip(dd)||'sheet'],
       ['Average cost per metre',fabCutPerM,'gbp2'],
@@ -588,7 +632,7 @@ function renderDetail(d){
       ['Fabric completed (metres)',fabDoneM,'m'],
       ['Fabric in WIP £ (at the last working day; today for the open month)',wipV,'gbp',dd=>{const c=fabChip(dd);return c&&c!=='cutting log'?c:null;}],
       ['Fabric in WIP (metres)',wipM,'m']]],
-    ['Service',[
+    ['Service','pWh',[
       ['Tibard OTIF',G('Tibard','Warehouse','OTIF %'),'pct'],
       ['Oliver Harvey OTIF',G('Oliver Harvey','Warehouse','OTIF %'),'pct'],
       ['Tibard orders despatched',G('Tibard','Warehouse','Orders Despatched'),'num'],
@@ -597,16 +641,17 @@ function renderDetail(d){
       ['OH late orders',G('Oliver Harvey','Warehouse','Late Orders'),'num'],
       ['DPD consignments',G('Group','Warehouse','DPD Consignments'),'num'],
       ['DPD cartons',G('Group','Warehouse','DPD Cartons'),'num']]],
-    ['Stock',[
+    ['Stock','pStock',[
       ['Tibard stock valuation',G('Tibard','Stock','Stock Valuation £'),'gbp'],
       ['OH stock valuation',G('Oliver Harvey','Stock','Stock Valuation £'),'gbp']]],
   ];
   const f=(v,t)=>v===null||v===undefined?'—':t==='txt'?v:t==='pct'?pct(v):t==='gbp'?gbp(v):t==='usd'?usd(v):t==='gbp2'?gbp2(v):t==='m'?num(v)+' m':num(v);
-  const body=groups.map(([g,rows])=>{
+  const body=groups.map(([g,go,rows])=>{
     const rs=rows.filter(([,fn])=>[d,pm,ya].some(dd=>{const x=fn(dd);return x!==null&&x!==undefined;}));
     if(!rs.length)return '';
-    return `<tr class="grp"><td colspan="4">${g}</td></tr>`+rs.map(([lbl,fn,t,s])=>
-      `<tr><td>${lbl}${s?chip(s(d)):''}</td><td class="num cur">${f(fn(d),t)}</td><td class="num">${f(fn(pm),t)}</td><td class="num">${f(fn(ya),t)}</td></tr>`).join('');
+    const tile=(PANEL_TILE[go]||'matching').toLowerCase();
+    return `<tr class="grp" data-go="${go}" title="Back up to the ${tile} tile"><td colspan="4">${g}<span class="up">&uarr; Tile</span></td></tr>`+rs.map(([lbl,fn,t,s])=>
+      `<tr data-go="${go}" title="Back up to the ${tile} tile"><td>${lbl}${s?chip(s(d)):''}</td><td class="num cur">${f(fn(d),t)}</td><td class="num">${f(fn(pm),t)}</td><td class="num">${f(fn(ya),t)}</td></tr>`).join('');
   }).join('');
   document.getElementById('detail').innerHTML=
     `<thead><tr><th>Metric</th><th>${fmtMonth(d)}</th><th>${fmtMonth(pm)}</th><th>${fmtMonth(ya)} (LY)</th></tr></thead><tbody>${body}</tbody>`;
