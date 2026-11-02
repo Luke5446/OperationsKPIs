@@ -1,4 +1,36 @@
 {
-"_about": "Fabric KPIs frozen at each month's last working day by tools/snapshot-fabric.js (run by the fabric-snapshot workflow). The dashboard shows these for closed months instead of recomputing from the feeds.",
-"months": {}
+ "_about": "Fabric KPIs frozen at each month's last working day by tools/snapshot-fabric.js (run by the fabric-snapshot workflow). The dashboard shows these for closed months instead of recomputing from the feeds.",
+ "months": {
+  "2026-10": {
+   "asAt": "2026-10-30",
+   "takenAt": "2026-11-02T20:27:27.527Z",
+   "revisedAt": null,
+   "final": false,
+   "finalOn": "2026-11-06",
+   "cutM": 7369.45,
+   "cutGBP": 19024.62,
+   "cutLines": 403,
+   "cutWOs": 317,
+   "cutUnpriced": 0,
+   "doneM": 7057.39,
+   "doneGBP": 18543.4,
+   "doneUnpriced": 0,
+   "wip": {
+    "asAt": "2026-10-30",
+    "metres": 1524.34,
+    "value": 4129.57,
+    "lines": 63,
+    "unpriced": 0,
+    "assumedLines": 4,
+    "assumedValue": 85.85,
+    "notValued": 0
+   },
+   "sources": {
+    "planner": "2026-11-02T16:45:48.794Z",
+    "cutlog": "2026-11-02T16:59:50.653Z",
+    "stock": "2026-11-02T13:46:52.756Z",
+    "prices": "planner page"
+   }
+  }
+ }
 }
