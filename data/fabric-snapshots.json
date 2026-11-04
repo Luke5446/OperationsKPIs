@@ -4,11 +4,11 @@
   "2026-10": {
    "asAt": "2026-10-30",
    "takenAt": "2026-11-02T20:27:27.527Z",
-   "revisedAt": null,
+   "revisedAt": "2026-11-04T18:09:14.478Z",
    "final": false,
    "finalOn": "2026-11-06",
-   "cutM": 7369.45,
-   "cutGBP": 19024.62,
+   "cutM": 7360.66,
+   "cutGBP": 19002.16,
    "cutLines": 403,
    "cutWOs": 317,
    "cutUnpriced": 0,
@@ -17,8 +17,8 @@
    "doneUnpriced": 0,
    "wip": {
     "asAt": "2026-10-30",
-    "metres": 1524.34,
-    "value": 4129.57,
+    "metres": 1515.55,
+    "value": 4107.11,
     "lines": 63,
     "unpriced": 0,
     "assumedLines": 4,
@@ -26,8 +26,8 @@
     "notValued": 0
    },
    "sources": {
-    "planner": "2026-11-02T16:45:48.794Z",
-    "cutlog": "2026-11-02T16:59:50.653Z",
+    "planner": "2026-11-04T15:33:48.386Z",
+    "cutlog": "2026-11-04T16:24:59.325Z",
     "stock": "2026-11-02T13:46:52.756Z",
     "prices": "planner page"
    }
