@@ -182,7 +182,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 18px 40px;font-size:.78rem;color
   <div class="section-title"><h2>Production</h2><span class="hint"><span class="range"></span> · value (bars) and garments (lines)</span></div>
   <div class="charts">
     <div class="panel wide tall" id="pOn">
-      <div class="panel-head"><h3>On-shore production</h3><span class="meta">£ value from the sheet · garments made from the production planner from Sep 2026</span></div>
+      <div class="panel-head"><h3>On-shore production</h3><span class="meta">£ from the sheet to Sep 2026, then garments completed × Sage standard cost from the planner (finishing-only jobs at bulk cost + £1) · garments made from the production planner from Sep 2026</span></div>
       <div class="chart-wrap"><canvas id="chProdOn"></canvas></div>
     </div>
     <div class="panel wide tall" id="pWo">
@@ -324,7 +324,7 @@ function deltaHTML(cur,ref,label,{pctPoints=false,invert=false}={}){
    The maths is in kpi-feeds.js, shared with the month-end freeze job (tools/snapshot-fabric.js). */
 const FEED_FROM=KPI.FEED_FROM;
 const CKW_USD_METRICS=['Clockwork Stock Bought In USD','Off-Shore Production USD','Off-Shore Production £'];   // the sheet's figure was always typed in USD
-let FEED={loaded:false,planner:null,cutlog:null,stock:null,prices:{},overrides:{exact:{},prefix:{}},ckwPrices:{},snapshots:{},status:{},savedAt:{},priceSrc:''};
+let FEED={loaded:false,planner:null,cutlog:null,stock:null,prices:{},overrides:{exact:{},prefix:{}},ckwPrices:{},stdCosts:{},snapshots:{},status:{},savedAt:{},priceSrc:''};
 let FACTS={};
 const today=()=>KPI.todayUK();
 const curMonth=()=>today().slice(0,7);
@@ -354,6 +354,10 @@ const feedMonth=(m,from,k)=>hasFeed(k)&&m>=from;
 const fx=m=>FACTS[m];
 const brandName=b=>b==='OH'?'Oliver Harvey':b==='Tibard'?'Tibard':'Group';
 function unitsMade(m,b){ if(feedMonth(m,FEED_FROM.wo,'planner')){const f=fx(m);return f?(b==='OH'?f.wo.unitsOH:f.wo.unitsTib):0;} return get(m,brandName(b),'Production','On-Shore Production Qty'); }
+/* On-shore £: from the cutover month, garments completed × Sage standard cost (the planner's pasted list; a finishing-only job at its BULK code's cost + £1); the sheet before, and when the list or planner is down */
+const onValued=m=>feedMonth(m,FEED_FROM.value,'planner')&&Object.keys(FEED.stdCosts||{}).length>0;
+function onGBP(m,b){ if(onValued(m)){const f=fx(m); if(!f||f.wo.gbp===null)return 0; return b==='OH'?f.wo.gbpOH:b==='Tibard'?f.wo.gbpTib:f.wo.gbp;} return b==='all'?onTotal(m):get(m,brandName(b),'Production','On-Shore Production £'); }
+function onUnpriced(m){ if(!onValued(m))return {codes:[],units:0}; const f=fx(m); return f?{codes:f.wo.unpriced,units:f.wo.unpricedUnits}:{codes:[],units:0}; }
 function woDone(m,b){ if(!feedMonth(m,FEED_FROM.wo,'planner'))return null; const f=fx(m); if(!f)return 0; return b==='OH'?f.wo.doneOH.size:b==='Tibard'?f.wo.doneTib.size:f.wo.done.size; }
 function woRaised(m){ if(!feedMonth(m,FEED_FROM.wo,'planner'))return null; const f=fx(m); return f?f.wo.raised.size:0; }
 const fabFrozen=m=>{const f=fx(m);return !!(f&&f.fab.frozen);};
@@ -386,7 +390,7 @@ function feedBadge(){
   if(FEED.stock)parts.push('Stock plan '+fmtStamp(FEED.savedAt.stock)); else bad.push('stock planner');
   el.className='src-badge '+(bad.length?'warn':'live');
   el.textContent=bad.length?('⚠ '+bad.join(', ')+' unavailable · sheet figures shown'+(parts.length?' · '+parts.join(' · '):'')+(FEED.status.compute?' · '+FEED.status.compute:'')):parts.join(' · ');
-  el.title='Fabric £/m from: '+FEED.priceSrc;
+  el.title='Fabric £/m from: '+FEED.priceSrc+' · Standard costs: '+(Object.keys(FEED.stdCosts||{}).length?Object.keys(FEED.stdCosts).length+' codes from the planner, pasted '+fmtDay(FEED.stdCostsAt):'none on the planner yet');
 }
 
 /* ================ render ================ */
@@ -403,11 +407,12 @@ function renderCards(d){
   const v=(x,f)=>x!==null&&x!==undefined?f(x):'—';
 
   // 1 On-shore production: £ typed in the sheet; garments made from the planner from Sep 2026
-  const ov=onTotal(d), uOH=unitsMade(d,'OH'), uT=unitsMade(d,'Tibard');
-  cards.push({label:'On-Shore Production',go:'pOn',value:v(ov,money),sub:'£ made in-house'+(isCur?' · to date':''),
-    deltas:deltaHTML(ov,onTotal(pm),pmL)+deltaHTML(ov,onTotal(ya),'vs LY'),
-    split:brandSplit(get(d,'Tibard','Production','On-Shore Production £'),get(d,'Oliver Harvey','Production','On-Shore Production £')),
-    split2:`<span>Made${chip(feedMonth(d,FEED_FROM.wo,'planner')?'planner':'')} ${dotO}OH <b>${v(uOH,num)}</b> · ${dotT}Tibard <b>${v(uT,num)}</b></span>`});
+  //   £ from the cutover month = garments completed × Sage standard cost, else typed in the sheet
+  const ov=onGBP(d,'all'), uOH=unitsMade(d,'OH'), uT=unitsMade(d,'Tibard'), onUnp=onUnpriced(d);
+  cards.push({label:'On-Shore Production',chip:onValued(d)?'std cost':'',go:'pOn',value:v(ov,money),sub:(onValued(d)?'£ at Sage standard cost':'£ made in-house')+(isCur?' · to date':''),
+    deltas:deltaHTML(ov,onGBP(pm,'all'),pmL)+deltaHTML(ov,onGBP(ya,'all'),'vs LY'),
+    split:brandSplit(onGBP(d,'Tibard'),onGBP(d,'OH')),
+    split2:`<span>Made${chip(feedMonth(d,FEED_FROM.wo,'planner')?'planner':'')} ${dotO}OH <b>${v(uOH,num)}</b> · ${dotT}Tibard <b>${v(uT,num)}</b></span>`+(onUnp.codes.length?`<span class="note">${num(onUnp.units)} garment${onUnp.units>1?'s':''} with no standard cost: ${onUnp.codes.slice(0,3).join(', ')}${onUnp.codes.length>3?'…':''}</span>`:'')});
 
   // 2 Works orders raised and completed (production planner, from Sep 2026)
   const wd=woDone(d), wr=woRaised(d);
@@ -553,7 +558,7 @@ function renderCharts(sel){
       plugins:{legend,tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw===null||c.raw===undefined?'—':c.dataset.yAxisID==='y2'?num(c.raw):fmtV(c.raw))}}}}});
   };
   prodChart('chProdOff','$',d=>ckwUSD(d,'Tibard'),d=>ckwUSD(d,'OH'),d=>ckwUnits(d,'Tibard'),d=>ckwUnits(d,'OH'),'$ value');
-  prodChart('chProdOn','£',d=>get(d,'Tibard','Production','On-Shore Production £'),d=>get(d,'Oliver Harvey','Production','On-Shore Production £'),d=>unitsMade(d,'Tibard'),d=>unitsMade(d,'OH'),'£ value');
+  prodChart('chProdOn','£',d=>onGBP(d,'Tibard'),d=>onGBP(d,'OH'),d=>unitsMade(d,'Tibard'),d=>unitsMade(d,'OH'),'£ value');
 
   /* Works orders from the production planner: completed by brand (bars) and raised (line) */
   mkChart('chWo',{type:'bar',data:{labels,datasets:[
@@ -607,8 +612,9 @@ function renderDetail(d){
   const src=(dd,feed,name)=>feed(dd)?name:'sheet';
   const groups=[
     ['On-shore production','pOn',[
-      ['Tibard on-shore £',G('Tibard','Production','On-Shore Production £'),'gbp'],
-      ['OH on-shore £',G('Oliver Harvey','Production','On-Shore Production £'),'gbp'],
+      ['Tibard on-shore £',dd=>onGBP(dd,'Tibard'),'gbp',dd=>src(dd,onValued,'std cost')],
+      ['OH on-shore £',dd=>onGBP(dd,'OH'),'gbp',dd=>src(dd,onValued,'std cost')],
+      ['Codes with no standard cost',dd=>{const u=onUnpriced(dd).codes;return u.length?u.join(', '):null;},'txt'],
       ['Tibard garments made',dd=>unitsMade(dd,'Tibard'),'num',dd=>src(dd,m=>feedMonth(m,FEED_FROM.wo,'planner'),'planner')],
       ['OH garments made',dd=>unitsMade(dd,'OH'),'num',dd=>src(dd,m=>feedMonth(m,FEED_FROM.wo,'planner'),'planner')]]],
     ['Works orders (production planner)','pWo',[

@@ -7,6 +7,8 @@
    - cutting log cutlog.json: one line per works order fabric, marked cut with the cutting room's metres
    - stock planner data.json: bookedPOs — containers (C…) and airfreight (AF…) booked in
    - the planner page: its FABRIC_PRICES table (standard £ per metre)
+   - production planner data.json also: stdCosts (Sage standard cost £ per garment, pasted on its KPI tab,
+     with finishAdd: the £ added to a BULK code's cost for a finishing-only works order)
    - this repo: fabric-prices.json (snapshot), fabric-price-overrides.json, clockwork-prices.json */
 (function(root){
 'use strict';
@@ -21,7 +23,7 @@ const FEEDS={
   snapshots:['data/fabric-snapshots.json']
 };
 /* The first month each feed replaces the figure typed into the sheet */
-const FEED_FROM={wo:'2026-09', clockwork:'2026-09', fabric:'2026-10'};
+const FEED_FROM={wo:'2026-09', clockwork:'2026-09', fabric:'2026-10', value:'2026-10'};   // value: on-shore £ = garments completed × Sage standard cost (the planner's list)
 const CUTLOG_FROM='2026-09-29';   // the cutting log began; a works order due before it was never on the log
 
 /* ---------- dates ---------- */
@@ -114,6 +116,8 @@ async function loadFeeds(opts){
   F.priceSrc=F.planner&&F.planner.fabricPrices?'planner data':got.page?'planner page':got.snapshot?'snapshot':'none';
   F.overrides={exact:up(got.overrides&&got.overrides.exact),prefix:up(got.overrides&&got.overrides.prefix)};
   F.ckwPrices=up(got.ckwPrices);
+  // Sage standard cost £ per garment, by stock code, as pasted on the planner's KPI tab and published with it
+  const sc=F.planner&&F.planner.stdCosts; F.stdCosts=up(sc&&sc.costs); F.finishAdd=sc&&sc.finishAdd>=0?+sc.finishAdd:1; F.stdCostsAt=(sc&&sc.pastedAt)||null;
   F.savedAt={planner:F.planner&&F.planner.savedAt,cutlog:F.cutlog&&F.cutlog.savedAt,stock:F.stock&&F.stock.savedAt};
   return F;
 }
@@ -135,11 +139,19 @@ const makePriceFor=F=>code=>{
   return null;
 };
 const makeCkwPriceFor=F=>code=>{const p=(F.ckwPrices||{})[(code||'').trim().toUpperCase()];return p>0?p:null;};
+/* Sage standard cost £ for a garment: the code's cost, or for a finishing-only works order (a Clockwork
+   bulk garment finished in-house) the BULK code's cost plus the finishing charge. A code the list lacks is unpriced. */
+const makeStdCostFor=F=>(code,finishing)=>{
+  const c=(code||'').trim().toUpperCase(), m=F.stdCosts||{};
+  if(finishing){const b=m['BULK'+c];return b>0?b+(F.finishAdd!=null?F.finishAdd:1):null;}
+  return m[c]>0?m[c]:null;
+};
 const cutMetres=e=>e.metres!=null?e.metres:(e.std!=null?e.std:0);
 
 /* ---------- the month-by-month facts ---------- */
 const blankMonth=()=>({
-  wo:{done:new Set(),doneOH:new Set(),doneTib:new Set(),raised:new Set(),unitsOH:0,unitsTib:0,lines:0,refBrand:{}},
+  wo:{done:new Set(),doneOH:new Set(),doneTib:new Set(),raised:new Set(),unitsOH:0,unitsTib:0,lines:0,refBrand:{},
+      gbp:null,gbpOH:0,gbpTib:0,unpriced:[],unpricedUnits:0},   // £ at Sage standard cost (null until a cost list is loaded)
   fab:{cutM:0,cutGBP:0,cutLines:0,cutWOs:new Set(),cutUnpriced:0,doneM:0,doneGBP:0,doneUnpriced:0,wip:null,asAt:null,frozen:null},
   ckw:{containers:[],units:0,unitsOH:0,unitsTib:0,usd:null,usdOH:0,usdTib:0,unpriced:[]}
 });
@@ -209,13 +221,16 @@ function fabricMonth(F,m,asAt){
 /* Everything the dashboard shows from the feeds, by month. today is YYYY-MM-DD (UK). */
 function computeFacts(F,today){
   const FACTS={}, M=m=>FACTS[m]||(FACTS[m]=blankMonth());
-  const P=F.planner, C=F.cutlog, S=F.stock, cm=today.slice(0,7), ckwPriceFor=makeCkwPriceFor(F);
+  const P=F.planner, C=F.cutlog, S=F.stock, cm=today.slice(0,7), ckwPriceFor=makeCkwPriceFor(F), stdCostFor=makeStdCostFor(F);
+  const costed=Object.keys(F.stdCosts||{}).length>0;
   if(P){
     P.completedWOs.forEach(c=>{
       if(!c.completed)return;
-      const m=c.completed.slice(0,7), f=M(m).wo, b=brandOf(c.code,c.ref,c.company);
+      const m=c.completed.slice(0,7), f=M(m).wo, b=brandOf(c.code,c.ref,c.company), q=c.qty||0;
       f.done.add(c.ref); f.lines++;
-      if(b==='OH')f.unitsOH+=c.qty||0; else f.unitsTib+=c.qty||0;
+      if(b==='OH')f.unitsOH+=q; else f.unitsTib+=q;
+      // £ made = garments completed × Sage standard cost; a code with no cost is listed, not guessed
+      if(costed){const p=stdCostFor(c.code,!!c.finishing); if(p!=null){f.gbp=(f.gbp||0)+q*p; if(b==='OH')f.gbpOH+=q*p; else f.gbpTib+=q*p;} else if(q){f.gbp=f.gbp||0; f.unpricedUnits+=q; const u=(c.finishing?'BULK':'')+c.code; if(!f.unpriced.includes(u))f.unpriced.push(u);}}
       // a works order with lines of both brands counts once, under the brand of most of its garments
       const rb=f.refBrand[c.ref]||(f.refBrand[c.ref]={OH:0,Tibard:0}); rb[b]+=(c.qty||0)||1e-9;
     });
@@ -274,6 +289,6 @@ function computeFacts(F,today){
   return FACTS;
 }
 
-const KPI={FEEDS,FEED_FROM,CUTLOG_FROM,SETTLE_DAYS,d2s,lastDay,lastWorkingDay,isWorkingDay,bankHolidays,addWorkingDays,nextMonth,monthOf,finalOn,ukDate,todayUK,fetchFirst,pricesFromPage,loadFeeds,brandOf,makePriceFor,makeCkwPriceFor,cutMetres,cutByMonth,doneByMonth,wipAt,fabricMonth,computeFacts};
+const KPI={FEEDS,FEED_FROM,CUTLOG_FROM,SETTLE_DAYS,d2s,lastDay,lastWorkingDay,isWorkingDay,bankHolidays,addWorkingDays,nextMonth,monthOf,finalOn,ukDate,todayUK,fetchFirst,pricesFromPage,loadFeeds,brandOf,makePriceFor,makeCkwPriceFor,makeStdCostFor,cutMetres,cutByMonth,doneByMonth,wipAt,fabricMonth,computeFacts};
 if(typeof module!=='undefined'&&module.exports)module.exports=KPI; else root.KPI=KPI;
 })(typeof globalThis!=='undefined'?globalThis:this);
