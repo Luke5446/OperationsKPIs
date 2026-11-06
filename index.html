@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tibard &amp; Oliver Harvey — Operations KPIs</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="kpi-feeds.js"></script>
+<script src="kpi-feeds.js?v=2026-11-06b"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -336,6 +336,9 @@ async function loadFeeds(){
   catch(e){ FACTS={}; FEED.planner=FEED.cutlog=FEED.stock=null; FEED.status.compute=String(e.message||e); }
   refreshMonths();
 }
+/* The month shown first: the last closed month (what the board reviews), when the sheet or a feed has it */
+let monthPicked=false;
+const defaultMonth=()=>{const pm=prevMonth(curMonth());return MONTHS.includes(pm)?pm:null;};
 /* The month list is the sheet's months plus any month a planner feed covers (from its cutover), up to this month */
 function refreshMonths(){
   const cm=curMonth(), from=Object.values(FEED_FROM).sort()[0];
@@ -346,6 +349,8 @@ function refreshMonths(){
   const sel=document.getElementById('monthSel'), keep=sel.value;
   sel.innerHTML=MONTHS.map(m=>`<option value="${m}">${fmtMonth(m)}</option>`).join('');
   sel.value=MONTHS.includes(keep)?keep:MONTHS[MONTHS.length-1];
+  // the feeds can add the last closed month after the first paint: move to it unless the user chose a month
+  if(!monthPicked&&defaultMonth())sel.value=defaultMonth();
 }
 
 /* ---- source-aware readers: the feed from its cutover month, the sheet before (and when a feed is down) ---- */
@@ -411,7 +416,7 @@ function renderCards(d){
   const ov=onGBP(d,'all'), uOH=unitsMade(d,'OH'), uT=unitsMade(d,'Tibard'), onUnp=onUnpriced(d);
   cards.push({label:'On-Shore Production',chip:onValued(d)?'std cost':'',go:'pOn',value:v(ov,money),sub:(onValued(d)?'£ at Sage standard cost':'£ made in-house')+(isCur?' · to date':''),
     deltas:deltaHTML(ov,onGBP(pm,'all'),pmL)+deltaHTML(ov,onGBP(ya,'all'),'vs LY'),
-    split:brandSplit(onGBP(d,'Tibard'),onGBP(d,'OH')),
+    split:brandSplit(onGBP(d,'Tibard'),onGBP(d,'OH'))+(d>=FEED_FROM.value&&!onValued(d)&&FEED.loaded?`<span class="note">${hasFeed('planner')?'No standard cost list on the planner yet':'Planner unavailable'} · sheet figure shown</span>`:''),
     split2:`<span>Made${chip(feedMonth(d,FEED_FROM.wo,'planner')?'planner':'')} ${dotO}OH <b>${v(uOH,num)}</b> · ${dotT}Tibard <b>${v(uT,num)}</b></span>`+(onUnp.codes.length?`<span class="note">${num(onUnp.units)} garment${onUnp.units>1?'s':''} with no standard cost: ${onUnp.codes.slice(0,3).join(', ')}${onUnp.codes.length>3?'…':''}</span>`:'')});
 
   // 2 Works orders raised and completed (production planner, from Sep 2026)
@@ -682,8 +687,8 @@ async function loadDashboard(url){
   const sel=document.getElementById('monthSel');
   sel.innerHTML=MONTHS.map(m=>`<option value="${m}">${fmtMonth(m)}</option>`).join('');
   const hasCore=m=>get(m,'Tibard','Warehouse','Orders Despatched')!==null||get(m,'Oliver Harvey','Warehouse','Orders Despatched')!==null;
-  sel.value=[...MONTHS].reverse().find(hasCore)||MONTHS[MONTHS.length-1];
-  sel.addEventListener('change',render);
+  sel.value=defaultMonth()||[...MONTHS].reverse().find(hasCore)||MONTHS[MONTHS.length-1];
+  sel.addEventListener('change',()=>{monthPicked=true;render();});
   const badge=document.getElementById('srcBadge');badge.textContent='Live · Google Sheet';badge.classList.add('live');
   render();
   // the planner feeds arrive after the first paint; the page re-renders when they do

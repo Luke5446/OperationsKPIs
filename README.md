@@ -98,3 +98,4 @@ and Clockwork USD per brand (`Off-Shore Production £`, or the clearer `Clockwor
 ## Changes
 
 - 2026-11-06 · On-shore production £ valued from the planner's completed garments × the Sage standard cost list the planner publishes (pasted on its KPI tab), from Oct 2026; a finishing-only works order at its BULK code's cost + £1. Sheet figure kept before that and while the list is empty.
+- 2026-11-06 · The month shown first is the last closed month (October in November), not the last month typed in the sheet. `kpi-feeds.js` carries a version in its script tag so a deploy is not masked by the browser's cached copy. The on-shore tile says when a month from Oct 2026 is still on the sheet figure.
