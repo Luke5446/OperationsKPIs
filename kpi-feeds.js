@@ -7,7 +7,8 @@
    - cutting log cutlog.json: one line per works order fabric, marked cut with the cutting room's metres
    - stock planner data.json: bookedPOs — containers (C…) and airfreight (AF…) booked in
    - the planner page: its FABRIC_PRICES table (standard £ per metre)
-   - this repo: fabric-prices.json (snapshot), fabric-price-overrides.json, clockwork-prices.json */
+   - this repo: fabric-prices.json (snapshot), fabric-price-overrides.json, clockwork-prices.json,
+     standard-costs.json (Sage standard cost £ per garment, to value the garments completed) */
 (function(root){
 'use strict';
 const FEEDS={
@@ -18,10 +19,11 @@ const FEEDS={
   prices:['data/fabric-prices.json'],
   priceOverrides:['data/fabric-price-overrides.json'],
   ckwPrices:['data/clockwork-prices.json'],
+  stdCosts:['data/standard-costs.json'],
   snapshots:['data/fabric-snapshots.json']
 };
 /* The first month each feed replaces the figure typed into the sheet */
-const FEED_FROM={wo:'2026-09', clockwork:'2026-09', fabric:'2026-10'};
+const FEED_FROM={wo:'2026-09', clockwork:'2026-09', fabric:'2026-10', value:'2026-11'};   // value: on-shore £ = garments completed × Sage standard cost
 const CUTLOG_FROM='2026-09-29';   // the cutting log began; a works order due before it was never on the log
 
 /* ---------- dates ---------- */
@@ -93,6 +95,7 @@ async function loadFeeds(opts){
     page:fetchFirst(FEEDS.plannerPage,false,opts.fetch).then(pricesFromPage),
     overrides:fetchFirst(rel(FEEDS.priceOverrides),true,opts.fetch),
     ckwPrices:fetchFirst(rel(FEEDS.ckwPrices),true,opts.fetch).then(j=>j&&j.prices?j.prices:j),
+    stdCosts:fetchFirst(rel(FEEDS.stdCosts),true,opts.fetch).then(j=>j&&j.costs?j.costs:j),
     snapshots:fetchFirst(rel(FEEDS.snapshots),true,opts.fetch)
   };
   const keys=Object.keys(jobs), results=await Promise.allSettled(keys.map(k=>jobs[k]));
@@ -114,6 +117,7 @@ async function loadFeeds(opts){
   F.priceSrc=F.planner&&F.planner.fabricPrices?'planner data':got.page?'planner page':got.snapshot?'snapshot':'none';
   F.overrides={exact:up(got.overrides&&got.overrides.exact),prefix:up(got.overrides&&got.overrides.prefix)};
   F.ckwPrices=up(got.ckwPrices);
+  F.stdCosts=up(got.stdCosts);   // Sage standard cost £ per garment, by stock code
   F.savedAt={planner:F.planner&&F.planner.savedAt,cutlog:F.cutlog&&F.cutlog.savedAt,stock:F.stock&&F.stock.savedAt};
   return F;
 }
@@ -135,11 +139,14 @@ const makePriceFor=F=>code=>{
   return null;
 };
 const makeCkwPriceFor=F=>code=>{const p=(F.ckwPrices||{})[(code||'').trim().toUpperCase()];return p>0?p:null;};
+/* Sage standard cost £ for a garment: the code as made; a code the list lacks is unpriced */
+const makeStdCostFor=F=>code=>{const p=(F.stdCosts||{})[(code||'').trim().toUpperCase()];return p>0?p:null;};
 const cutMetres=e=>e.metres!=null?e.metres:(e.std!=null?e.std:0);
 
 /* ---------- the month-by-month facts ---------- */
 const blankMonth=()=>({
-  wo:{done:new Set(),doneOH:new Set(),doneTib:new Set(),raised:new Set(),unitsOH:0,unitsTib:0,lines:0,refBrand:{}},
+  wo:{done:new Set(),doneOH:new Set(),doneTib:new Set(),raised:new Set(),unitsOH:0,unitsTib:0,lines:0,refBrand:{},
+      gbp:null,gbpOH:0,gbpTib:0,unpriced:[],unpricedUnits:0},   // £ at Sage standard cost (null until a cost list is loaded)
   fab:{cutM:0,cutGBP:0,cutLines:0,cutWOs:new Set(),cutUnpriced:0,doneM:0,doneGBP:0,doneUnpriced:0,wip:null,asAt:null,frozen:null},
   ckw:{containers:[],units:0,unitsOH:0,unitsTib:0,usd:null,usdOH:0,usdTib:0,unpriced:[]}
 });
@@ -209,13 +216,16 @@ function fabricMonth(F,m,asAt){
 /* Everything the dashboard shows from the feeds, by month. today is YYYY-MM-DD (UK). */
 function computeFacts(F,today){
   const FACTS={}, M=m=>FACTS[m]||(FACTS[m]=blankMonth());
-  const P=F.planner, C=F.cutlog, S=F.stock, cm=today.slice(0,7), ckwPriceFor=makeCkwPriceFor(F);
+  const P=F.planner, C=F.cutlog, S=F.stock, cm=today.slice(0,7), ckwPriceFor=makeCkwPriceFor(F), stdCostFor=makeStdCostFor(F);
+  const costed=Object.keys(F.stdCosts||{}).length>0;
   if(P){
     P.completedWOs.forEach(c=>{
       if(!c.completed)return;
-      const m=c.completed.slice(0,7), f=M(m).wo, b=brandOf(c.code,c.ref,c.company);
+      const m=c.completed.slice(0,7), f=M(m).wo, b=brandOf(c.code,c.ref,c.company), q=c.qty||0;
       f.done.add(c.ref); f.lines++;
-      if(b==='OH')f.unitsOH+=c.qty||0; else f.unitsTib+=c.qty||0;
+      if(b==='OH')f.unitsOH+=q; else f.unitsTib+=q;
+      // £ made = garments completed × Sage standard cost; a code with no cost is listed, not guessed
+      if(costed){const p=stdCostFor(c.code); if(p!=null){f.gbp=(f.gbp||0)+q*p; if(b==='OH')f.gbpOH+=q*p; else f.gbpTib+=q*p;} else if(q){f.gbp=f.gbp||0; f.unpricedUnits+=q; if(!f.unpriced.includes(c.code))f.unpriced.push(c.code);}}
       // a works order with lines of both brands counts once, under the brand of most of its garments
       const rb=f.refBrand[c.ref]||(f.refBrand[c.ref]={OH:0,Tibard:0}); rb[b]+=(c.qty||0)||1e-9;
     });
@@ -274,6 +284,6 @@ function computeFacts(F,today){
   return FACTS;
 }
 
-const KPI={FEEDS,FEED_FROM,CUTLOG_FROM,SETTLE_DAYS,d2s,lastDay,lastWorkingDay,isWorkingDay,bankHolidays,addWorkingDays,nextMonth,monthOf,finalOn,ukDate,todayUK,fetchFirst,pricesFromPage,loadFeeds,brandOf,makePriceFor,makeCkwPriceFor,cutMetres,cutByMonth,doneByMonth,wipAt,fabricMonth,computeFacts};
+const KPI={FEEDS,FEED_FROM,CUTLOG_FROM,SETTLE_DAYS,d2s,lastDay,lastWorkingDay,isWorkingDay,bankHolidays,addWorkingDays,nextMonth,monthOf,finalOn,ukDate,todayUK,fetchFirst,pricesFromPage,loadFeeds,brandOf,makePriceFor,makeCkwPriceFor,makeStdCostFor,cutMetres,cutByMonth,doneByMonth,wipAt,fabricMonth,computeFacts};
 if(typeof module!=='undefined'&&module.exports)module.exports=KPI; else root.KPI=KPI;
 })(typeof globalThis!=='undefined'?globalThis:this);

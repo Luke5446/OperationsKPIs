@@ -7,7 +7,8 @@ Google Sheet URL it reads is encrypted in the page and only decrypts with the pa
 
 | Figure | Source | From |
 |---|---|---|
-| On-shore production £, stock valuation, OTIF, orders despatched, late orders, DPD | **KPI Data sheet** (typed each month) | always |
+| Stock valuation, OTIF, orders despatched, late orders, DPD | **KPI Data sheet** (typed each month) | always |
+| On-shore production £ | **KPI Data sheet** (typed) to Oct 2026; from Nov 2026 the garments completed on the **production planner** × Sage standard cost in `data/standard-costs.json` | Nov 2026 |
 | Garments made (OH / Tibard), works orders raised and completed | **Production planner** `data.json` | Sep 2026 |
 | Fabric cut (metres and £), fabric completed £, fabric in WIP, each month as at its **last working day** and frozen there | **Cutting log** `cutlog.json` + production planner; `data/fabric-snapshots.json` once frozen | Oct 2026 |
 | Fabric cut before Oct 2026 | KPI Data sheet rows `Fabric Cut Metres` / `Fabric Cost of Usage £` | Apr 2025 – Sep 2026 |
@@ -29,6 +30,11 @@ copy first and `raw.githubusercontent.com` as a fallback. No token is needed.
   list (`FABRIC_PRICES`, standard £ per metre). `data/fabric-prices.json` is a dated snapshot used
   when the page cannot be fetched; `data/fabric-price-overrides.json` adds £/m for codes the list
   lacks (the 25mm webbing), with exact codes winning and prefix rules only filling gaps.
+- `data/standard-costs.json` — Sage standard cost £ per garment, by stock code. Refresh it with
+  `tools/standard-costs.sql` (run in SQL 1.xlsx, paste the `JsonLine` column in) whenever Sage costs
+  are re-rolled. A completed code missing from it is listed on the tile and in the detail table as
+  having no standard cost, and its garments are not valued. While the list is empty the sheet figure
+  is shown.
 - `data/clockwork-prices.json` — Clockwork USD per garment. Update it when Clockwork sends new
   prices (it is the Data tab of the container order template). A code missing from it is listed
   on the tile and in the detail table as unpriced.
@@ -37,6 +43,8 @@ copy first and `raw.githubusercontent.com` as a fallback. No token is needed.
 
 - **Brand** of a garment: a special make uses its Sage company; otherwise a product code starting
   `OH` is Oliver Harvey and everything else (Tibard codes and customer-branded codes) is Tibard.
+- **On-shore production £** (from Nov 2026) = each works order line completed in the month: its qty ×
+  the Sage standard cost of its code. It is not frozen, so re-rolling the cost list restates past months.
 - **Works orders completed** = distinct works order refs with a completion in the month; a works
   order with lines of both brands counts once, under the brand of most of its garments.
   **Raised** = distinct refs by the day they entered the planner (`createdAt`, stamped from 7 Sep 2026;
@@ -83,5 +91,9 @@ chart was reached from and flashes it, so there is no scrolling up and down.
 ## Adding a month to the sheet
 
 Rows are `Date, Brand, Area, Metric, Value` with `Date` as `YYYY-MM`. Values typed by hand each
-month: on-shore production £ per brand, stock valuation, OTIF, orders despatched, late orders, DPD,
+month: on-shore production £ per brand (to Oct 2026 only), stock valuation, OTIF, orders despatched, late orders, DPD,
 and Clockwork USD per brand (`Off-Shore Production £`, or the clearer `Clockwork Stock Bought In USD`).
+
+## Changes
+
+- 2026-11-06 · On-shore production £ valued from the planner's completed garments × Sage standard cost (`data/standard-costs.json`, `tools/standard-costs.sql`), from Nov 2026. Sheet figure kept before that and while the list is empty.
