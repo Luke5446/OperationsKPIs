@@ -1,7 +1,0 @@
-{
-"_about": "Sage standard cost in £ per garment, by stock code, for every product made in-house (Tibard and Oliver Harvey). The dashboard values the garments the production planner shows as completed each month at these costs, from the month in FEED_FROM.value (kpi-feeds.js). While this list is empty the on-shore £ typed into the KPI Data sheet is shown instead.",
-"_source": "tools/standard-costs.sql run in SQL 1.xlsx against TIB-SQL-002: paste the JsonLine column between the braces of costs",
-"_updated": "",
-"costs": {
-}
-}

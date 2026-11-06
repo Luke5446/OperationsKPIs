@@ -182,7 +182,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 18px 40px;font-size:.78rem;color
   <div class="section-title"><h2>Production</h2><span class="hint"><span class="range"></span> · value (bars) and garments (lines)</span></div>
   <div class="charts">
     <div class="panel wide tall" id="pOn">
-      <div class="panel-head"><h3>On-shore production</h3><span class="meta">£ from the sheet to Oct 2026, then garments completed × Sage standard cost · garments made from the production planner from Sep 2026</span></div>
+      <div class="panel-head"><h3>On-shore production</h3><span class="meta">£ from the sheet to Sep 2026, then garments completed × Sage standard cost from the planner (finishing-only jobs at bulk cost + £1) · garments made from the production planner from Sep 2026</span></div>
       <div class="chart-wrap"><canvas id="chProdOn"></canvas></div>
     </div>
     <div class="panel wide tall" id="pWo">
@@ -354,7 +354,7 @@ const feedMonth=(m,from,k)=>hasFeed(k)&&m>=from;
 const fx=m=>FACTS[m];
 const brandName=b=>b==='OH'?'Oliver Harvey':b==='Tibard'?'Tibard':'Group';
 function unitsMade(m,b){ if(feedMonth(m,FEED_FROM.wo,'planner')){const f=fx(m);return f?(b==='OH'?f.wo.unitsOH:f.wo.unitsTib):0;} return get(m,brandName(b),'Production','On-Shore Production Qty'); }
-/* On-shore £: from the cutover month, garments completed × Sage standard cost (data/standard-costs.json); the sheet before, and when the list or planner is down */
+/* On-shore £: from the cutover month, garments completed × Sage standard cost (the planner's pasted list; a finishing-only job at its BULK code's cost + £1); the sheet before, and when the list or planner is down */
 const onValued=m=>feedMonth(m,FEED_FROM.value,'planner')&&Object.keys(FEED.stdCosts||{}).length>0;
 function onGBP(m,b){ if(onValued(m)){const f=fx(m); if(!f||f.wo.gbp===null)return 0; return b==='OH'?f.wo.gbpOH:b==='Tibard'?f.wo.gbpTib:f.wo.gbp;} return b==='all'?onTotal(m):get(m,brandName(b),'Production','On-Shore Production £'); }
 function onUnpriced(m){ if(!onValued(m))return {codes:[],units:0}; const f=fx(m); return f?{codes:f.wo.unpriced,units:f.wo.unpricedUnits}:{codes:[],units:0}; }
@@ -390,7 +390,7 @@ function feedBadge(){
   if(FEED.stock)parts.push('Stock plan '+fmtStamp(FEED.savedAt.stock)); else bad.push('stock planner');
   el.className='src-badge '+(bad.length?'warn':'live');
   el.textContent=bad.length?('⚠ '+bad.join(', ')+' unavailable · sheet figures shown'+(parts.length?' · '+parts.join(' · '):'')+(FEED.status.compute?' · '+FEED.status.compute:'')):parts.join(' · ');
-  el.title='Fabric £/m from: '+FEED.priceSrc+' · Standard costs: '+(Object.keys(FEED.stdCosts||{}).length||'none loaded');
+  el.title='Fabric £/m from: '+FEED.priceSrc+' · Standard costs: '+(Object.keys(FEED.stdCosts||{}).length?Object.keys(FEED.stdCosts).length+' codes from the planner, pasted '+fmtDay(FEED.stdCostsAt):'none on the planner yet');
 }
 
 /* ================ render ================ */
