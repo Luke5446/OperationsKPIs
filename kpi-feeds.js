@@ -8,7 +8,7 @@
    - stock planner data.json: bookedPOs — containers (C…) and airfreight (AF…) booked in
    - the planner page: its FABRIC_PRICES table (standard £ per metre)
    - production planner data.json also: stdCosts (Sage standard cost £ per garment, pasted on its KPI tab,
-     with finishAdd: the £ added to a BULK code's cost for a finishing-only works order)
+     with finishAdd: the £ added to the code's cost for a finishing-only works order)
    - this repo: fabric-prices.json (snapshot), fabric-price-overrides.json, clockwork-prices.json */
 (function(root){
 'use strict';
@@ -140,10 +140,12 @@ const makePriceFor=F=>code=>{
 };
 const makeCkwPriceFor=F=>code=>{const p=(F.ckwPrices||{})[(code||'').trim().toUpperCase()];return p>0?p:null;};
 /* Sage standard cost £ for a garment: the code's cost, or for a finishing-only works order (a Clockwork
-   bulk garment finished in-house) the BULK code's cost plus the finishing charge. A code the list lacks is unpriced. */
+   container garment finished in-house) the code's cost plus the finishing charge. Since the BULK codes were
+   retired (27 Nov 2026) the home code carries the bought-in cost; a BULK cost still on the planner's list
+   stands in when the home cost is missing. A code the list lacks is unpriced. */
 const makeStdCostFor=F=>(code,finishing)=>{
   const c=(code||'').trim().toUpperCase(), m=F.stdCosts||{};
-  if(finishing){const b=m['BULK'+c];return b>0?b+(F.finishAdd!=null?F.finishAdd:1):null;}
+  if(finishing){const h=m[c]>0?m[c]:m['BULK'+c];return h>0?h+(F.finishAdd!=null?F.finishAdd:1):null;}
   return m[c]>0?m[c]:null;
 };
 const cutMetres=e=>e.metres!=null?e.metres:(e.std!=null?e.std:0);
@@ -230,7 +232,7 @@ function computeFacts(F,today){
       f.done.add(c.ref); f.lines++;
       if(b==='OH')f.unitsOH+=q; else f.unitsTib+=q;
       // £ made = garments completed × Sage standard cost; a code with no cost is listed, not guessed
-      if(costed){const p=stdCostFor(c.code,!!c.finishing); if(p!=null){f.gbp=(f.gbp||0)+q*p; if(b==='OH')f.gbpOH+=q*p; else f.gbpTib+=q*p;} else if(q){f.gbp=f.gbp||0; f.unpricedUnits+=q; const u=(c.finishing?'BULK':'')+c.code; if(!f.unpriced.includes(u))f.unpriced.push(u);}}
+      if(costed){const p=stdCostFor(c.code,!!c.finishing); if(p!=null){f.gbp=(f.gbp||0)+q*p; if(b==='OH')f.gbpOH+=q*p; else f.gbpTib+=q*p;} else if(q){f.gbp=f.gbp||0; f.unpricedUnits+=q; const u=c.code; if(!f.unpriced.includes(u))f.unpriced.push(u);}}
       // a works order with lines of both brands counts once, under the brand of most of its garments
       const rb=f.refBrand[c.ref]||(f.refBrand[c.ref]={OH:0,Tibard:0}); rb[b]+=(c.qty||0)||1e-9;
     });
