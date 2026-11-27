@@ -8,7 +8,7 @@ Google Sheet URL it reads is encrypted in the page and only decrypts with the pa
 | Figure | Source | From |
 |---|---|---|
 | Stock valuation, OTIF, orders despatched, late orders, DPD | **KPI Data sheet** (typed each month) | always |
-| On-shore production £ | **KPI Data sheet** (typed) to Sep 2026; from Oct 2026 the garments completed on the **production planner** × the Sage standard cost list pasted on the planner's KPI tab (`stdCosts` in its `data.json`); a finishing-only works order at its BULK code's cost + £1 | Oct 2026 |
+| On-shore production £ | **KPI Data sheet** (typed) to Sep 2026; from Oct 2026 the garments completed on the **production planner** × the Sage standard cost list pasted on the planner's KPI tab (`stdCosts` in its `data.json`); a finishing-only works order at its code's cost + £1 (the home code carries the bought-in cost since the BULK codes were retired, 27 Nov 2026) | Oct 2026 |
 | Garments made (OH / Tibard), works orders raised and completed | **Production planner** `data.json` | Sep 2026 |
 | Fabric cut (metres and £), fabric completed £, fabric in WIP, each month as at its **last working day** and frozen there | **Cutting log** `cutlog.json` + production planner; `data/fabric-snapshots.json` once frozen | Oct 2026 |
 | Fabric cut before Oct 2026 | KPI Data sheet rows `Fabric Cut Metres` / `Fabric Cost of Usage £` | Apr 2025 – Sep 2026 |
@@ -25,8 +25,8 @@ copy first and `raw.githubusercontent.com` as a fallback. No token is needed.
 
 - `https://luke5446.github.io/Tibard-Productionplan/data.json` — works orders (`WOs`, `completedWOs`) and the
   Sage standard cost list (`stdCosts.costs`, £ per code, pasted on the planner's KPI tab from its
-  `sage/80-standard-costs.sql`; `stdCosts.finishAdd` is the £ added to a BULK code's cost for a
-  finishing-only works order). A completed code missing from the list is shown on the tile and in the
+  `sage/80-standard-costs.sql`; `stdCosts.finishAdd` is the £ added to the code's cost for a
+  finishing-only works order; a BULK cost still on the list stands in when the home cost is missing). A completed code missing from the list is shown on the tile and in the
   detail table as having no standard cost and is not valued. While the list is empty the sheet figure is shown.
 - `https://luke5446.github.io/Tibard-Cutlog/cutlog.json` — the cutting room log
 - `https://luke5446.github.io/Tibard-Stock-Planner/data.json` — containers (`bookedPOs`)
@@ -43,8 +43,8 @@ copy first and `raw.githubusercontent.com` as a fallback. No token is needed.
 - **Brand** of a garment: a special make uses its Sage company; otherwise a product code starting
   `OH` is Oliver Harvey and everything else (Tibard codes and customer-branded codes) is Tibard.
 - **On-shore production £** (from Oct 2026) = each works order line completed in the month: its qty ×
-  the Sage standard cost of its code; a line flagged `finishing` on the planner (a Clockwork bulk garment
-  finished in-house) × the `BULK` code's cost + £1. It is not frozen, so re-rolling the cost list restates
+  the Sage standard cost of its code; a line flagged `finishing` on the planner (a Clockwork container garment
+  finished in-house) × its code's cost + £1 (a `BULK` cost stands in when the home cost is missing). It is not frozen, so re-rolling the cost list restates
   past months.
 - **Works orders completed** = distinct works order refs with a completion in the month; a works
   order with lines of both brands counts once, under the brand of most of its garments.
